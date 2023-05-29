@@ -20,20 +20,20 @@ function Banner({ netflixOriginals }: Props) {
 	return (
 		<div className='flex flex-col space-y-2 py-16 md:space-y-4 lg:h-[65vh] lg:justify-end lg:pd-12'>
 			<div className='absolute top-0 left-0 -z-10 h-[95vh] w-screen'>
-				<Image
+				{/* <Image
 					src={`${baseUrl}${movie?.backdrop_path || movie?.poster_path}`}
 					width={500}
 					height={500}
 					style={{ objectFit: 'cover' }}
 					alt='Picture of the author'
+				/> */}
+				<img
+					src={`${baseUrl}${movie?.backdrop_path || movie?.poster_path}`}
+					alt='image'
+					style={{ objectFit: 'cover' }}
+					fill
+					priority=''
 				/>
-				{/* <img 
-				src={`${baseUrl}${movie?.backdrop_path || movie?.poster_path}`}
-        alt='image'
-        style={{ objectFit: "cover" }}
-        fill
-				priority=''      
-        /> */}
 			</div>
 
 			<h1 className='text-2xl md:text-4xl lg:text-7xl'>
