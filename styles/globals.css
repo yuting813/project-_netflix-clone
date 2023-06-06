@@ -5,7 +5,7 @@
 /* html, body, heading */
 @layer base {
 	body {
-		@apply bg-[#141414] text-white  !scrollbar-thin !scrollbar-track-transparent  scrollbar-thumb-red-600;
+		@apply bg-[#141414] text-white  !scrollbar-thin !scrollbar-track-transparent  scrollbar-thumb-yellow-600;
 	}
 
 	header {
@@ -24,4 +24,8 @@
 		@apply flex items-center gap-x-2 rounded px-6 py-1.5 text-sm font-semibold transition
 		hover:opacity-75 md:py-2.5 md:text-xl;
 	}
+	.input {
+		@apply w-full rounded bg-[#333] px-5 py-3.5 placeholder-[gray] outline-none;
+	}
 }
+ 
