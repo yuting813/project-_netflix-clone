@@ -30,11 +30,12 @@ const Home = ({
 }: Props) => {
 	// console.log(123,netflixOriginals);
 	return (
-		<div className='relative h-screen bg-gradient-to-b from-gray-900/10 to-[##010511] lg:h-[140vh]'>
+		<div className='relative bg-[linear-gradient(to_bottom,rgba(20,20,20,0)_0%,rgba(20,20,20,0.15)_15%,rgba(20,20,20,0.35)_29%,rgba(20,20,20,0.58)_44%,#141414_58%,#141414_100%)] rounded lg:h-[160vh] '>
 			<Head>
 				<title>Home - Netflixx</title>
 				<link rel='icon' href='/favicon.ico' />
 			</Head>
+
 			<Header />
 			<main className='relative pl-4 pb-24 space-y-24 lg:pl-16 '>
 				<Banner netflixOriginals={netflixOriginals} />
@@ -51,6 +52,7 @@ const Home = ({
 					<Row title='Documentaries' movies={documentaries} />
 				</section>
 			</main>
+
 			{/* Modal */}
 		</div>
 	);

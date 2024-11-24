@@ -18,6 +18,7 @@ function Login() {
 				style={{ objectFit: 'cover' }}
 				fill={true}
 				priority={true}
+				sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
 			/>
 			<img
 				// src='https://rb.gy/ulxxee'
@@ -26,6 +27,7 @@ function Login() {
 				height={70}
 				className='absolute left-4 top-4  cursor-pointer object-contain md:left-10 md:top-6 '
 				alt=''
+				sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
 			/>
 
 			<form className='relative mt-24 space-y-8 py-10 px-6 rounded bg-black/75 md:mt-0 md:max-w-md md:px-14'>

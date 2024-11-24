@@ -3,6 +3,8 @@ import { Movie } from '@/typings';
 import Image from 'next/image';
 
 interface Props {
+	//When using firebase
+	//movie: Movie || DocumentData
 	movie: Movie;
 }
 
@@ -18,6 +20,7 @@ function Thumbnail({ movie }: Props) {
 				className='rounded-sm object-cover md:rounded'
 				fill={true}
 				alt=''
+				sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
 			/>
 		</div>
 	);

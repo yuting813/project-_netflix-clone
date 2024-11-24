@@ -15,9 +15,17 @@
 		"jsx": "preserve",
 		"incremental": true,
 		"paths": {
-			"@/*": ["./*"]   
-		}
+			"@/*": ["./*"]
+		},
+		"typeRoots": ["./node_modules/@types", "./types"]
 	},
-	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+
+	"include": [
+		"next-env.d.ts",
+		"**/*.ts",
+		"**/*.tsx",
+		"types/**/*.d.ts",
+		"types/tailwind-plugins.d.ts"
+	],
 	"exclude": ["node_modules"]
 }
