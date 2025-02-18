@@ -7,7 +7,7 @@ import { useRecoilState } from 'recoil';
 interface Props {
 	//When using firebase
 	//movie: Movie || DocumentData
-	movie: Movie
+	movie: Movie;
 }
 
 function Thumbnail({ movie }: Props) {
@@ -28,7 +28,7 @@ function Thumbnail({ movie }: Props) {
 				src={`https://image.tmdb.org/t/p/w500${movie.backdrop_path || movie.poster_path}`}
 				className='rounded-sm object-cover md:rounded'
 				fill={true}
-				alt=''
+				alt='image'
 				sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
 			/>
 		</div>

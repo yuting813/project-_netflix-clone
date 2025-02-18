@@ -18,8 +18,8 @@ function Modal() {
 	const [trailer, setTrailer] = useState('');
 	const [genres, setGenres] = useState<Genre[]>([]);
 	const [muted, setMuted] = useState(true);
-	const { user } = useAuth();
 	const [addedToList, setAddedToList] = useState(false);
+	const { user } = useAuth();
 	const [movies, setMovies] = useState<DocumentData[] | Movie[]>([]);
 
 	const toastStyle = {
@@ -59,13 +59,34 @@ function Modal() {
 	}, [movie]);
 
 	// Find all the movies in the user's list
+	// useEffect(() => {
+	// 	if (user) {
+	// 		return onSnapshot(collection(db, 'customers', user.uid, 'myList'), (snapshot) =>
+	// 			setMovies(snapshot.docs),
+	// 		);
+	// 	}
+	// }, [db, movie?.id]);
+
 	useEffect(() => {
 		if (user) {
-			return onSnapshot(collection(db, 'customers', user.uid, 'myList'), (snapshot) =>
-				setMovies(snapshot.docs),
+			const unsubscribe = onSnapshot(
+				collection(db, 'customers', user.uid, 'myList'),
+				(snapshot) => {
+					try {
+						setMovies(snapshot.docs.map((doc) => doc.data()));
+					} catch (error) {
+						console.error('Error fetching My List:', error);
+						//Handle the error appropriately, perhaps by showing an error message.
+					}
+				},
+				(error) => {
+					console.error('Error listening to My List:', error);
+					//Handle the error appropriately.
+				},
 			);
+			return unsubscribe; // Important to unsubscribe when the component unmounts.
 		}
-	}, [db, movie?.id]);
+	}, [user, db]);
 
 	// Check if the movie is already in the user's list
 	useEffect(

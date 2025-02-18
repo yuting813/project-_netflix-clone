@@ -30,4 +30,15 @@
 	.modalButton {
 		@apply flex h-11 w-11 items-center justify-center rounded-full border-2 border-[gray] bg-[#2a2a2a]/60 transition hover:border-white hover:bg-white/10;
 	}
+
+	.planBox {
+		@apply relative mx-1.5 flex h-20 w-[calc(100%/3)] cursor-default 
+		items-center justify-center rounded-sm bg-[#e50914] font-semibold shadow;
+	  }
+	  
+	  .planBox::after {
+		@apply absolute top-full left-1/2 block -translate-x-1/2 
+		border-8 border-b-0 border-transparent border-t-[#e50914] content-[""];
+	  }
+	  
 }

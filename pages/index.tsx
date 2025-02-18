@@ -7,10 +7,16 @@ import requests from '@/utils/request';
 import { Movie } from '@/typings';
 import Row from '@/components/Row';
 import useAuth from '@/hooks/useAuth';
+import useSubscription from '../hooks/useSubscription';
 import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useRecoilValue } from 'recoil';
-import { modalState } from '@/atoms/modalAtom';
+import { modalState, movieState } from '@/atoms/modalAtom';
+import Plans from '@/components/Plans';
+import { getProducts, Product } from '@stripe/firestore-stripe-payments';
+import payments from '@/lib/stripe';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/firebase';
 
 interface Props {
 	netflixOriginals: Movie[];
@@ -21,6 +27,7 @@ interface Props {
 	horrorMovies: Movie[];
 	romanceMovies: Movie[];
 	documentaries: Movie[];
+	products: Product[];
 }
 
 const Home = ({
@@ -32,15 +39,19 @@ const Home = ({
 	romanceMovies,
 	topRated,
 	trendingNow,
+	products,
 }: Props) => {
-	// console.log(123,netflixOriginals);
-	const { loading } = useAuth();
+	console.log('Products:', products);
+	const { loading, user } = useAuth();
 	const showModal = useRecoilValue(modalState);
-	// const [showModal, setShowModal] = useState(false);
+	// const subscription = useSubscription(user);
+	const movie = useRecoilValue(movieState);
+	// const list = useList(user?.uid);
+	const subscription = false;
 
-	// if (loading) return 'Loading';
-	if (loading) return null;
+	if (loading || subscription === null) return null;
 
+	if (!subscription) return <Plans products={products} />;
 	return (
 		<div className='relative bg-[linear-gradient(to_bottom,rgba(20,20,20,0)_0%,rgba(20,20,20,0.15)_15%,rgba(20,20,20,0.35)_29%,rgba(20,20,20,0.58)_44%,#141414_58%,#141414_100%)] rounded lg:h-[160vh] '>
 			<Head>
@@ -65,7 +76,6 @@ const Home = ({
 				</section>
 			</main>
 
-			{/* Modal */}
 			{showModal && <Modal />}
 		</div>
 	);
@@ -74,6 +84,29 @@ const Home = ({
 export default Home;
 
 export const getServerSideProps = async () => {
+	console.log('payments', payments);
+	const products = await getProducts(payments, {
+		includePrices: true,
+		activeOnly: true,
+	})
+		.then((res) => {
+			console.log('thenres', res);
+			res;
+		})
+
+		.catch((error) => {
+			console.log('payments', payments);
+			console.error('Error fetching products:', error); // 更詳細的錯誤訊息
+			console.error('Error stack:', error.stack); // 顯示錯誤堆疊追蹤
+			return []; // 或顯示錯誤訊息給使用者
+		});
+
+	const productsCollection = collection(db, 'products');
+	// const productsSnapshot = await getDocs(productsCollection);
+	// const productsFromFirestore = productsSnapshot.docs.map((doc) => doc.data());
+	// console.log('productsFromFirestore:', productsFromFirestore);
+	console.log('Fetched Products:', products);
+
 	const [
 		netflixOriginals,
 		trendingNow,
@@ -103,6 +136,8 @@ export const getServerSideProps = async () => {
 			horrorMovies: horrorMovies.results,
 			romanceMovies: romanceMovies.results,
 			documentaries: documentaries.results,
+			// products: productsFromFirestore,
+			products: products,
 		},
 	};
 };

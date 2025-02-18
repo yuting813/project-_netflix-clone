@@ -60,33 +60,3 @@ function Banner({ netflixOriginals }: Props) {
 }
 
 export default Banner;
-
-{
-	/* <Image
-      src="/don.jpg"
-      fill={true}
-      alt="Picture of the author"
-      priority={true}
-    /> */
-}
-{
-	/* <Image
-					src={`${baseUrl}${movie?.backdrop_path || movie?.poster_path}`}
-					width={500}
-					height={500}
-					style={{ objectFit: 'cover' }}
-					alt='Picture of the author'
-				/> */
-}
-
-{
-	/* {movie?.backdrop_path && movie?.poster_path && (
-					<Image
-						src={`${baseUrl}${movie.backdrop_path || movie.poster_path}`}
-						alt='image'
-						style={{ objectFit: 'cover' }}
-						fill={true}
-						priority={true}
-					/>
-					)} */
-}

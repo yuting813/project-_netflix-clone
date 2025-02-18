@@ -27,7 +27,6 @@ function Login() {
 			await signUp(email, password);
 		}
 	};
-	console.log(watch('email')); // watch input value by passing the name of it
 
 	return (
 		<div className='relative flex h-screen w-screen flex-col bg-black md:items-center md:justify-center md:bg-transparent'>
@@ -45,12 +44,11 @@ function Login() {
 			/>
 
 			<img
-				// src='https://rb.gy/ulxxee'
 				src='./logo.svg'
 				width={70}
 				height={70}
 				className='absolute left-4 top-4  cursor-pointer object-contain md:left-10 md:top-6 '
-				alt=''
+				alt='logo'
 				sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
 			/>
 
