@@ -1,22 +1,19 @@
-import { NextPage } from 'next';
 import Head from 'next/head';
-import Image from 'next/image';
 import Header from '@/components/Header';
 import Banner from '@/components/Banner';
 import requests from '@/utils/request';
 import { Movie } from '@/typings';
 import Row from '@/components/Row';
 import useAuth from '@/hooks/useAuth';
-import useSubscription from '../hooks/useSubscription';
-import { useState } from 'react';
 import Modal from '@/components/Modal';
 import { useRecoilValue } from 'recoil';
 import { modalState, movieState } from '@/atoms/modalAtom';
 import Plans from '@/components/Plans';
-import { getProducts, Product } from '@stripe/firestore-stripe-payments';
-import payments from '@/lib/stripe';
+import { getProducts, getStripePayments, Product } from '@invertase/firestore-stripe-payments';
+
+// import { fetchProducts } from '@/lib/stripe';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/firebase';
+import app, { db } from '@/firebase';
 
 interface Props {
 	netflixOriginals: Movie[];
@@ -83,29 +80,103 @@ const Home = ({
 
 export default Home;
 
+// export const getServerSideProps = async () => {
+// 	try {
+// 		const [products, ...movieData] = await Promise.all([
+// 			fetchProducts().catch((error) => {
+// 				console.error('Stripe 產品獲取錯誤:', error);
+// 				return [];
+// 			}),
+// 			// 獲取電影數據
+// 			fetch(requests.fetchNetflixOriginals).then((res) => res.json()),
+// 			fetch(requests.fetchTrending).then((res) => res.json()),
+// 			fetch(requests.fetchTopRated).then((res) => res.json()),
+// 			fetch(requests.fetchActionMovies).then((res) => res.json()),
+// 			fetch(requests.fetchComedyMovies).then((res) => res.json()),
+// 			fetch(requests.fetchHorrorMovies).then((res) => res.json()),
+// 			fetch(requests.fetchRomanceMovies).then((res) => res.json()),
+// 			fetch(requests.fetchDocumentaries).then((res) => res.json()),
+// 		]);
+
+// 		console.log('Stripe products loaded:', products?.length || 0);
+
+// 		// 解構電影數據
+// 		const [
+// 			netflixOriginals,
+// 			trendingNow,
+// 			topRated,
+// 			actionMovies,
+// 			comedyMovies,
+// 			horrorMovies,
+// 			romanceMovies,
+// 			documentaries,
+// 		] = movieData;
+
+// 		return {
+// 			props: {
+// 				products,
+// 				netflixOriginals: netflixOriginals.results,
+// 				trendingNow: trendingNow.results,
+// 				topRated: topRated.results,
+// 				actionMovies: actionMovies.results,
+// 				comedyMovies: comedyMovies.results,
+// 				horrorMovies: horrorMovies.results,
+// 				romanceMovies: romanceMovies.results,
+// 				documentaries: documentaries.results,
+// 			},
+// 		};
+// 	} catch (error) {
+// 		console.error('getServerSideProps error:', error);
+// 		return {
+// 			props: {
+// 				products: [],
+// 				netflixOriginals: [],
+// 				trendingNow: [],
+// 				topRated: [],
+// 				actionMovies: [],
+// 				comedyMovies: [],
+// 				horrorMovies: [],
+// 				romanceMovies: [],
+// 				documentaries: [],
+// 			},
+// 		};
+// 	}
+// };
+const payments = getStripePayments(app, {
+	productsCollection: 'products',
+	customersCollection: 'customers',
+});
 export const getServerSideProps = async () => {
-	console.log('payments', payments);
+	console.log('Fetching products...1');
 	const products = await getProducts(payments, {
 		includePrices: true,
 		activeOnly: true,
 	})
-		.then((res) => {
-			console.log('thenres', res);
-			res;
-		})
-
+		.then((res) => res)
 		.catch((error) => {
-			console.log('payments', payments);
-			console.error('Error fetching products:', error); // 更詳細的錯誤訊息
-			console.error('Error stack:', error.stack); // 顯示錯誤堆疊追蹤
-			return []; // 或顯示錯誤訊息給使用者
+			console.log('Error fetching products:', error);
+			return [];
 		});
-
+	console.log('Fetching products...2');
+	//新增以下程式碼來從firestore取得產品資料
 	const productsCollection = collection(db, 'products');
-	// const productsSnapshot = await getDocs(productsCollection);
-	// const productsFromFirestore = productsSnapshot.docs.map((doc) => doc.data());
-	// console.log('productsFromFirestore:', productsFromFirestore);
-	console.log('Fetched Products:', products);
+	const productsSnapshot = await getDocs(productsCollection);
+	const productsWithPricing = await Promise.all(
+		productsSnapshot.docs.map(async (doc) => {
+			const productData = doc.data();
+			const pricesCollection = collection(db, `products/${doc.id}/prices`);
+			const pricesSnapshot = await getDocs(pricesCollection);
+			const prices = pricesSnapshot.docs.map((priceDoc) => priceDoc.data());
+			console.log('prices:', prices);
+			return {
+				id: doc.id,
+				...productData,
+				price: prices.length > 0 ? prices[0].unit_amount : 'No prices available',
+			};
+		}),
+	);
+
+	console.log('productsFromFirestore:', productsWithPricing);
 
 	const [
 		netflixOriginals,
@@ -126,6 +197,7 @@ export const getServerSideProps = async () => {
 		fetch(requests.fetchRomanceMovies).then((res) => res.json()),
 		fetch(requests.fetchDocumentaries).then((res) => res.json()),
 	]);
+
 	return {
 		props: {
 			netflixOriginals: netflixOriginals.results,
@@ -136,8 +208,7 @@ export const getServerSideProps = async () => {
 			horrorMovies: horrorMovies.results,
 			romanceMovies: romanceMovies.results,
 			documentaries: documentaries.results,
-			// products: productsFromFirestore,
-			products: products,
+			products: productsWithPricing, // 使用從 Firestore 取得的產品資料
 		},
 	};
 };

@@ -1,4 +1,7 @@
-import { onCurrentUserSubscriptionUpdate, Subscription } from '@stripe/firestore-stripe-payments';
+import {
+	onCurrentUserSubscriptionUpdate,
+	Subscription,
+} from '@invertase/firestore-stripe-payments';
 import { User } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import payments from '../lib/stripe';

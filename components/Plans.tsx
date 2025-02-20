@@ -6,7 +6,7 @@ import Link from 'next/link';
 import React, { useState } from 'react';
 import Header from './Header';
 import { CheckIcon } from '@heroicons/react/outline';
-import { Product } from '@stripe/firestore-stripe-payments';
+import { Product } from '@invertase/firestore-stripe-payments';
 import { loadCheckout } from '@/lib/stripe';
 import Table from './Table';
 
@@ -17,14 +17,16 @@ interface Props {
 const Plans = ({ products }: Props) => {
 	console.log('products_plans', products);
 	const { logout, user } = useAuth();
-	const [selectedPlan, setSelectedPlan] = useState<Product | null>(products[2]);
+	const [selectedPlan, setSelectedPlan] = useState<Product | null>(products[0]);
 	const [isBillingLoading, setBillingLoading] = useState(false);
+
 	const subscribeToPlan = () => {
 		if (!user) return;
 
 		loadCheckout(selectedPlan?.prices[0].id!);
 		setBillingLoading(true);
 	};
+
 	return (
 		<div>
 			<Head>

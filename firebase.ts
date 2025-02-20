@@ -1,10 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApp, getApps } from 'firebase/app';
-import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -21,26 +18,9 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 const auth = getAuth();
-console.log('Firebase app', app);
-console.log('Firebase db', db);
-console.log('Firebase auth', auth);
+console.log('db', db);
+console.log('auth', auth);
+console.log('app', app);
 
 export default app;
 export { auth, db };
-
-// // Example function to fetch products
-// async function fetchProducts() {
-// 	try {
-// 		const productsCollection = collection(db, 'products');
-// 		console.log('db:', db);
-// 		console.log('productsCollection:', productsCollection);
-// 		const productsSnapshot = await getDocs(productsCollection);
-// 		const productsList = productsSnapshot.docs.map((doc) => doc.data());
-// 		console.log('productsList:', productsList);
-// 	} catch (error) {
-// 		console.error('Error fetching products:', error);
-// 	}
-// }
-
-// // Call the function to fetch products
-// fetchProducts();
