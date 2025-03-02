@@ -7,7 +7,8 @@ import React, { useState } from 'react';
 import Header from './Header';
 import { CheckIcon } from '@heroicons/react/outline';
 import { Product } from '@invertase/firestore-stripe-payments';
-import { loadCheckout } from '@/lib/stripe';
+// import { loadCheckout } from '@/lib/stripe';
+import loadCheckout from '@/lib/stripe';
 import Table from './Table';
 
 interface Props {
@@ -17,7 +18,8 @@ interface Props {
 const Plans = ({ products }: Props) => {
 	console.log('products_plans', products);
 	const { logout, user } = useAuth();
-	const [selectedPlan, setSelectedPlan] = useState<Product | null>(products[0]);
+	const [selectedPlan, setSelectedPlan] = useState<Product | null>(products[2]);
+
 	const [isBillingLoading, setBillingLoading] = useState(false);
 
 	const subscribeToPlan = () => {
@@ -48,7 +50,7 @@ const Plans = ({ products }: Props) => {
 					Sign out
 				</button>
 			</header>
-			<main className='pt-28 px-5 max-w-5xl pb-12 transition-all'>
+			<main className='pt-28 px-5 mx-auto max-w-5xl pb-12 transition-all'>
 				<h1 className='mb-3 text-3xl font-medium  '>Choose the plan that is right for you</h1>
 				<ul>
 					<li className='flex items-center gap-x-2 text-lg'>
@@ -64,13 +66,25 @@ const Plans = ({ products }: Props) => {
 				<div className='mt-4 flex flex-col space-y-4'>
 					<div className='flex w-full items-center justify-center self-end md:w-3/5'>
 						{products.map((product) => (
-							<div key={product.id} className='planBox'>
+							<div
+								key={product.id}
+								className={`planBox ${
+									selectedPlan?.id === product.id ? 'opacity-100' : 'opacity-60'
+								} cursor-pointer`}
+								onClick={() => {
+									setSelectedPlan(product);
+								}}
+							>
 								{product.name}
 							</div>
 						))}
 					</div>
 
-					<Table products={products} />
+					<Table
+						products={products}
+						selectedPlan={selectedPlan}
+						setSelectedPlan={setSelectedPlan}
+					/>
 					<button>Subscribe</button>
 				</div>
 			</main>

@@ -32,8 +32,9 @@
 	}
 
 	.planBox {
-		@apply relative mx-1.5 flex h-20 w-[calc(100%/3)] cursor-default 
-		items-center justify-center rounded-sm bg-[#e50914] font-semibold shadow;
+		@apply relative mx-1.5 flex h-20 w-[calc(100%/3)] 
+		items-center justify-center rounded-sm bg-[#e50914] font-semibold shadow 
+		cursor-pointer  transition duration-200;
 	}
 
 	.planBox::after {
@@ -41,8 +42,7 @@
 		border-8 border-b-0 border-transparent border-t-[#e50914] content-[""];
 	}
 
-	/* Table */
-	.tableRow {
+	Table .tableRow {
 		@apply flex flex-wrap items-center font-medium;
 	}
 
@@ -51,6 +51,7 @@
 	}
 
 	.tableDataFeature {
-		@apply w-[calc(100%/3)] p-2.5 text-center md:w-[calc(60%/3)] md:p-3.5;
+		@apply w-[calc(100%/3)] p-2.5 text-center md:w-[calc(60%/3)] md:p-3.5
+		cursor-pointer transition-colors duration-200;
 	}
 }
