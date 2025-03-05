@@ -51,12 +51,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 					// Not logged in...
 					setUser(null);
 					setLoading(true);
-					router.push('/login');
+					// 使用 try-catch 包裹路由切換
+					try {
+						if (router.pathname !== '/login') {
+							router.push('/login');
+						}
+					} catch (error) {
+						console.error('路由切換錯誤:', error);
+					}
 				}
 
 				setInitialLoading(false);
 			}),
-		[auth],
+		[auth, router], // 添加 router 作為依賴
 	);
 
 	const signUp = async (email: string, password: string) => {
