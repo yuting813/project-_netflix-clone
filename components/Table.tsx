@@ -32,10 +32,11 @@ function Table({ products, selectedPlan, setSelectedPlan }: Props) {
 			<tbody className='divide-y divide-[gray]'>
 				<tr className='tableRow'>
 					<td className='tableDataTitle'>Monthly price</td>
+
 					{products.map((product) =>
 						renderTableCell(
 							product,
-							product.price ? `USD$${(product.price / 100).toFixed(2)}` : 'N/A',
+							product.price[0] ? `USD$${(product.price[0].unit_amount / 100).toFixed(2)}` : 'N/A',
 						),
 					)}
 				</tr>
