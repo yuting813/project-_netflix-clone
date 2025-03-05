@@ -24,7 +24,16 @@ function Login() {
 		if (login) {
 			await signIn(email, password);
 		} else {
-			await signUp(email, password);
+			try {
+				await signUp(email, password);
+			} catch (error: any) {
+				if (error.code === 'auth/email-already-in-use') {
+					alert('此信箱已被註冊，請直接登入或使用其他信箱');
+				} else {
+					console.error('註冊錯誤:', error);
+					alert('註冊失敗，請稍後再試');
+				}
+			}
 		}
 	};
 
@@ -95,7 +104,11 @@ function Login() {
 				</button>
 				<div className='text-[gray]'>
 					New to Netflixx? {'  '}
-					<button type='submit' className='text-white hover:underline '>
+					<button
+						type='submit'
+						onClick={() => setLogin(false)}
+						className='text-white hover:underline '
+					>
 						Sing up now
 					</button>
 				</div>

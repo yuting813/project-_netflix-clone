@@ -9,11 +9,14 @@ import Modal from '@/components/Modal';
 import { useRecoilValue } from 'recoil';
 import { modalState, movieState } from '@/atoms/modalAtom';
 import Plans from '@/components/Plans';
-import { getProducts, getStripePayments, Product } from '@invertase/firestore-stripe-payments';
+import { Product } from '@invertase/firestore-stripe-payments';
 
 // import { fetchProducts } from '@/lib/stripe';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import app, { db } from '@/firebase';
+import useSubscription from '@/hooks/useSubscription';
+import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 
 interface Props {
 	netflixOriginals: Movie[];
@@ -38,16 +41,46 @@ const Home = ({
 	trendingNow,
 	products,
 }: Props) => {
-	console.log('Products:', products);
 	const { loading, user } = useAuth();
 	const showModal = useRecoilValue(modalState);
-	// const subscription = useSubscription(user);
+	const subscription = useSubscription(user);
 	const movie = useRecoilValue(movieState);
 	// const list = useList(user?.uid);
-	const subscription = false;
+	const router = useRouter();
+	const { session_id } = router.query;
 
-	if (loading || subscription === null) return null;
+	useEffect(() => {
+		if (session_id && user) {
+			// 支付成功後更新訂閱狀態
+			const updateSubscription = async () => {
+				try {
+					const subscriptionRef = doc(db, 'customers', user.uid, 'subscriptions', 'active');
+					await setDoc(
+						subscriptionRef,
+						{
+							status: 'active',
+							current_period_start: Date.now(),
+							current_period_end: Date.now() + 30 * 24 * 60 * 60 * 1000,
+							userId: user.uid,
+						},
+						{ merge: true },
+					);
+					console.log('訂閱狀態更新成功');
+					// window.location.reload();
+				} catch (error) {
+					console.error('更新訂閱狀態失敗:', error);
+				}
+			};
+			updateSubscription();
+		}
+	}, [session_id, user]);
 
+	if (loading) return null;
+
+	if (!user) {
+		router.push('/login');
+		return null;
+	}
 	if (!subscription) return <Plans products={products} />;
 	return (
 		<div className='relative bg-[linear-gradient(to_bottom,rgba(20,20,20,0)_0%,rgba(20,20,20,0.15)_15%,rgba(20,20,20,0.35)_29%,rgba(20,20,20,0.58)_44%,#141414_58%,#141414_100%)] rounded lg:h-[160vh] '>
@@ -97,23 +130,27 @@ export const getServerSideProps = async () => {
 	// 		return [];
 	// 	});
 	// console.log('Fetching products...2');
-	
 
 	try {
 		//  Firestore 產品獲取邏輯
 		const productsCollection = collection(db, 'products');
 		const productsSnapshot = await getDocs(productsCollection);
+
 		const productsWithPricing = await Promise.all(
 			productsSnapshot.docs.map(async (doc) => {
 				const productData = doc.data();
 				const pricesCollection = collection(db, `products/${doc.id}/prices`);
 				const pricesSnapshot = await getDocs(pricesCollection);
-				const prices = pricesSnapshot.docs.map((priceDoc) => priceDoc.data());
+
+				const prices = pricesSnapshot.docs.map((priceDoc) => ({
+					id: priceDoc.id,
+					...priceDoc.data(),
+				}));
 
 				return {
 					id: doc.id,
 					...productData,
-					price: prices.length > 0 ? prices[0].unit_amount : 'No prices available',
+					price: prices,
 				};
 			}),
 		);
