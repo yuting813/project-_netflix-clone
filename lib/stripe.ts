@@ -1,6 +1,7 @@
 import { getApp } from '@firebase/app';
 import { getProducts, createCheckoutSession } from '@invertase/firestore-stripe-payments';
 import { getStripePayments } from '@invertase/firestore-stripe-payments';
+import { loadStripe } from '@stripe/stripe-js';
 
 // 初始化 Firebase app
 const app = getApp();
@@ -11,35 +12,39 @@ const payments = getStripePayments(app, {
 	customersCollection: 'customers',
 });
 
-// 獲取產品列表
-// export const fetchProducts = async () => {
-// 	try {
-// 		const products = await getProducts(payments, {
-// 			includePrices: true,
-// 			activeOnly: true,
-// 		});
-// 		console.log('Products fetched:', products?.length);
-// 		console.log('Products :', products);
-// 		return products;
-// 	} catch (error) {
-// 		console.error('Error fetching products:', error);
-// 		return [];
-// 	}
-// };
+const stripePromise = loadStripe(
+	'pk_test_51QogiRRsSr8qcNR4YmWmX3vnlM8W1augUrk3y5SpjGOndUk31SPLsHpQAsSBNGpWBeH8k2ObVi9Bkb9zGwKOI4zT00MB9MjFuA',
+);
 
-// 處理支付
-// const loadCheckout = async (priceId: string) => {
-// 	try {
-// 		const session = await createCheckoutSession(payments, {
-// 			price: priceId,
-// 			success_url: window.location.origin,
-// 			cancel_url: window.location.origin,
-// 		});
-// 		window.location.assign(session.url);
-// 	} catch (error) {
-// 		console.error('Checkout error:', error);
-// 	}
-// };
+const loadCheckout = async (priceId: string, userId: string) => {
+	try {
+		const stripe = await stripePromise;
+		if (!stripe) throw new Error('Stripe not loaded');
 
-// export { loadCheckout };
+		// 創建 checkout session
+		const response = await fetch('/api/create-checkout-session', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ priceId, userId }),
+		});
+
+		const session = await response.json();
+
+		// 重定向到 Stripe Checkout
+		const result = await stripe.redirectToCheckout({
+			sessionId: session.id,
+		});
+
+		if (result.error) {
+			throw new Error(result.error.message);
+		}
+	} catch (error) {
+		console.error('支付錯誤:', error);
+		window.location.assign('/error');
+	}
+};
+
+export { loadCheckout };
 export default payments;
