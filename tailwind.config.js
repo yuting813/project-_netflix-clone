@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+
 module.exports = {
 	content: [
 		'./pages/**/*.{js,ts,jsx,tsx}',
@@ -20,4 +21,7 @@ module.exports = {
 		require('tailwind-scrollbar-hide'),
 		require('tailwind-scrollbar'),
 	],
+	variants: {
+		scrollbar: ['rounded'],
+	},
 };

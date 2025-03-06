@@ -4,8 +4,30 @@
 
 /* html, body, heading */
 @layer base {
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: #e50914 #141414;
+	}
+
+	*::-webkit-scrollbar {
+		width: 8px;
+	}
+
+	*::-webkit-scrollbar-track {
+		background: #141414;
+	}
+
+	*::-webkit-scrollbar-thumb {
+		background-color: #e50914;
+		border-radius: 4px;
+	}
+
+	*::-webkit-scrollbar-thumb:hover {
+		background-color: #b81d24;
+	}
+
 	body {
-		@apply bg-[#141414] text-white !scrollbar-thin !scrollbar-track-transparent  !scrollbar-thumb-red-600;
+		@apply bg-[#141414] text-white;
 	}
 
 	header {
