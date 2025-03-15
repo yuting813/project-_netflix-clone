@@ -17,6 +17,7 @@ import app, { db } from '@/firebase';
 import useSubscription from '@/hooks/useSubscription';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
+import useList from '@/hooks/useList';
 
 interface Props {
 	netflixOriginals: Movie[];
@@ -45,7 +46,7 @@ const Home = ({
 	const showModal = useRecoilValue(modalState);
 	const subscription = useSubscription(user);
 	const movie = useRecoilValue(movieState);
-	// const list = useList(user?.uid);
+	const list = useList(user?.uid);
 	const router = useRouter();
 	const { session_id } = router.query;
 
@@ -98,7 +99,7 @@ const Home = ({
 					<Row title='Top Rated' movies={topRated} />
 					<Row title='Action Thrillers' movies={actionMovies} />
 					{/* My List */}
-
+					{list.length > 0 && <Row title='My List' movies={list} />}
 					<Row title='Comedies' movies={comedyMovies} />
 					<Row title='Scary Movies' movies={horrorMovies} />
 					<Row title='Romance Movies' movies={romanceMovies} />

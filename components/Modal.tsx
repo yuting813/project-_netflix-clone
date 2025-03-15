@@ -58,15 +58,6 @@ function Modal() {
 		fetchMovie();
 	}, [movie]);
 
-	// Find all the movies in the user's list
-	// useEffect(() => {
-	// 	if (user) {
-	// 		return onSnapshot(collection(db, 'customers', user.uid, 'myList'), (snapshot) =>
-	// 			setMovies(snapshot.docs),
-	// 		);
-	// 	}
-	// }, [db, movie?.id]);
-
 	useEffect(() => {
 		if (user) {
 			const unsubscribe = onSnapshot(
@@ -90,8 +81,8 @@ function Modal() {
 
 	// Check if the movie is already in the user's list
 	useEffect(
-		() => setAddedToList(movies.findIndex((result) => result.data().id === movie?.id) !== -1),
-		[movies],
+		() => setAddedToList(movies.findIndex((result) => result.id === movie?.id) !== -1),
+		[movies, movie],
 	);
 
 	const handleList = async () => {
