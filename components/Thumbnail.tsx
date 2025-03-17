@@ -14,7 +14,8 @@ interface Props {
 function Thumbnail({ movie }: Props) {
 	const [showModal, setShowModal] = useRecoilState(modalState);
 	const [currentMovie, setCurrentMovie] = useRecoilState(movieState);
-
+	const [imageError, setImageError] = useState(false);
+	const imagePath = movie.poster_path || movie.backdrop_path;
 	return (
 		<div
 			className={
@@ -26,11 +27,22 @@ function Thumbnail({ movie }: Props) {
 			}}
 		>
 			<Image
-				src={`https://image.tmdb.org/t/p/w500${movie.backdrop_path || movie.poster_path}`}
+				src={
+					imageError || !imagePath
+						? '/fallback-image.webp'
+						: `https://image.tmdb.org/t/p/w500${imagePath}`
+				}
+				alt={movie.title || movie.name || 'Movie poster'}
 				className='rounded-sm object-cover md:rounded'
 				fill={true}
-				alt='image'
 				sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+				onError={() => {
+					console.error(
+						'Failed to load image for movie: ${ movie.title || movie.name }',
+						imagePath,
+					);
+					setImageError(true);
+				}}
 			/>
 		</div>
 	);

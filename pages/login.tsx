@@ -41,10 +41,10 @@ function Login() {
 		<div className='relative flex h-screen w-screen flex-col bg-black md:items-center md:justify-center md:bg-transparent'>
 			<Head>
 				<title>Netflixx</title>
-				<link rel='icon' href='/favicon.ico' />
+				<link rel='icon' href='/logo.svg' />
 			</Head>
 			<Image
-				src='/loginImg.svg'
+				src='/loginImg.webp'
 				className='z-0 hidden opacity-90 sm:inline object-cover'
 				alt='Login page background image'
 				fill

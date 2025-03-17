@@ -35,7 +35,7 @@ function Header() {
 				/>
 
 				<ul className='hidden space-x-4 md:flex'>
-					<link rel='icon' href='/favicon.ico' />
+					<link rel='icon' href='/logo.svg' />
 					<li className='headerLink'>Home </li>
 					<li className='headerLink'>TV Shows</li>
 					<li className='headerLink'>Movies</li>

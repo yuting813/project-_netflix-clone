@@ -18,22 +18,27 @@ function Banner({ netflixOriginals }: Props) {
 	const [showModal, setShowModal] = useRecoilState(modalState);
 	const [currentMovie, setCurrentMovie] = useRecoilState(movieState);
 	const [isLoading, setIsLoading] = useState(true);
+	const [imageError, setImageError] = useState(false);
+
 	useEffect(() => {
 		setMovie(netflixOriginals[Math.floor(Math.random() * netflixOriginals.length)]);
 	}, [netflixOriginals]);
+
+	const imagePath = movie?.poster_path || movie?.backdrop_path;
 
 	return movie == null ? null : (
 		<div className=' flex flex-col space-y-2 py-16 md:space-y-4 lg:h-[65vh] lg:justify-end lg:pb-12'>
 			<div className='absolute top-0 left-0  h-[95vh] w-[98.5vw] -z-10'>
 				<Image
-					src={`${baseUrl}${movie?.backdrop_path || movie?.poster_path}`}
+					src={imageError || !imagePath ? '/fallback-image.webp' : `${baseUrl}${imagePath}`}
 					alt={movie?.title || movie?.name || 'Movie banner'}
 					style={{ objectFit: 'cover' }}
-					fill={true}
-					priority={true}
-					sizes='100vw'
-					onLoadingComplete={() => setIsLoading(false)}
 					className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+					fill={true}
+					sizes='100vw'
+					priority={true}
+					onError={() => setImageError(true)}
+					onLoadingComplete={() => setIsLoading(false)}
 				/>
 			</div>
 			<h1 className='text-2xl md:text-3xl lg:text-7xl'>
