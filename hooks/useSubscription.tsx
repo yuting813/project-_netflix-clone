@@ -1,6 +1,6 @@
 import { User } from 'firebase/auth';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
 interface Subscription {
@@ -9,41 +9,23 @@ interface Subscription {
 	current_period_start: number;
 }
 
-// function useSubscription(user: User | null) {
-// 	const [subscription, setSubscription] = useState<Subscription | null>(null);
+interface SubscriptionResult {
+	subscription: Subscription | null;
+	loading: boolean;
+	error?: string;
+}
 
-// 	useEffect(() => {
-// 		if (!user) return;
-
-// 		// 監聽用戶的訂閱狀態
-// 		const subscriptionsRef = collection(db, 'customers', user.uid, 'subscriptions');
-// 		const q = query(subscriptionsRef, where('status', 'in', ['active', 'trialing']));
-
-// 		const unsubscribe = onSnapshot(q, (snapshot) => {
-// 			if (snapshot.empty) {
-// 				setSubscription(null);
-// 				return;
-// 			}
-
-// 			// 獲取最新的訂閱資訊
-// 			const currentSub = snapshot.docs[0].data() as Subscription;
-// 			setSubscription(currentSub);
-// 		});
-
-// 		return () => {
-// 			unsubscribe();
-// 		};
-// 	}, [user]);
-
-// 	return subscription;
-// }
-
-function useSubscription(user: User | null) {
+function useSubscription(user: User | null): SubscriptionResult {
 	const [subscription, setSubscription] = useState<Subscription | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string>('');
 
 	useEffect(() => {
+		setError('');
+
 		if (!user) {
 			setSubscription(null);
+			setLoading(false);
 			return;
 		}
 
@@ -55,28 +37,28 @@ function useSubscription(user: User | null) {
 				q,
 				(snapshot) => {
 					if (snapshot.empty) {
-						console.log('沒有找到訂閱');
 						setSubscription(null);
+						setLoading(false);
 						return;
 					}
 					const currentSub = snapshot.docs[0].data() as Subscription;
-					console.log('找到訂閱:', currentSub);
 					setSubscription(currentSub);
+					setLoading(false);
 				},
 				(error) => {
-					console.error('訂閱監聽錯誤:', error);
-					setSubscription(null);
+					setError('訂閱數據獲取失敗');
+					setLoading(false);
 				},
 			);
 
 			return () => unsubscribe();
 		} catch (error) {
-			console.error('設置訂閱監聽時出錯:', error);
-			setSubscription(null);
+			setError('訂閱系統連接失敗');
+			setLoading(false);
 		}
 	}, [user]);
 
-	return subscription;
+	return { subscription, loading, error };
 }
 
 export default useSubscription;

@@ -1,23 +1,22 @@
+import { Product } from '@invertase/firestore-stripe-payments';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import Head from 'next/head';
-import Header from '@/components/Header';
+import { useRouter } from 'next/router';
+import { useRecoilValue } from 'recoil';
+import { useEffect } from 'react';
 import Banner from '@/components/Banner';
-import requests from '@/utils/request';
-import { Movie } from '@/typings';
+import Header from '@/components/Header';
+import Loader from '@/components/Loader';
+import Modal from '@/components/Modal';
+import Plans from '@/components/Plans';
 import Row from '@/components/Row';
 import useAuth from '@/hooks/useAuth';
-import Modal from '@/components/Modal';
-import { useRecoilValue } from 'recoil';
-import { modalState, movieState } from '@/atoms/modalAtom';
-import Plans from '@/components/Plans';
-import { Product } from '@invertase/firestore-stripe-payments';
-
-// import { fetchProducts } from '@/lib/stripe';
-import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
-import app, { db } from '@/firebase';
-import useSubscription from '@/hooks/useSubscription';
-import { useRouter } from 'next/router';
-import { useEffect } from 'react';
 import useList from '@/hooks/useList';
+import useSubscription from '@/hooks/useSubscription';
+import { modalState, movieState } from '@/atoms/modalAtom';
+import app, { db } from '@/firebase';
+import { Movie } from '@/typings';
+import requests from '@/utils/request';
 
 interface Props {
 	netflixOriginals: Movie[];
@@ -42,13 +41,17 @@ const Home = ({
 	trendingNow,
 	products,
 }: Props) => {
-	const { loading, user } = useAuth();
-	const showModal = useRecoilValue(modalState);
-	const subscription = useSubscription(user);
-	const movie = useRecoilValue(movieState);
-	const list = useList(user?.uid);
 	const router = useRouter();
 	const { session_id } = router.query;
+	const { loading: authLoading, user } = useAuth();
+	const {
+		subscription,
+		loading: subscriptionLoading,
+		error: subscriptionError,
+	} = useSubscription(user);
+	const showModal = useRecoilValue(modalState);
+	const movie = useRecoilValue(movieState);
+	const list = useList(user?.uid);
 
 	useEffect(() => {
 		if (session_id && user) {
@@ -67,7 +70,6 @@ const Home = ({
 						{ merge: true },
 					);
 					console.log('訂閱狀態更新成功');
-					// window.location.reload();
 				} catch (error) {
 					console.error('更新訂閱狀態失敗:', error);
 				}
@@ -76,13 +78,37 @@ const Home = ({
 		}
 	}, [session_id, user]);
 
-	if (loading) return null;
+	if (authLoading || subscriptionLoading) {
+		return (
+			<div className='flex h-screen items-center justify-center bg-black'>
+				<Loader color='fill-white' />
+			</div>
+		);
+	}
 
 	if (!user) {
 		router.push('/login');
 		return null;
 	}
+
+	if (subscriptionError) {
+		return (
+			<div className='flex h-screen items-center justify-center bg-black'>
+				<div className='text-white text-center'>
+					<p className='text-red-500 mb-4'>{subscriptionError}</p>
+					<button
+						onClick={() => window.location.reload()}
+						className='bg-[#e50914] px-4 py-2 rounded'
+					>
+						重新載入
+					</button>
+				</div>
+			</div>
+		);
+	}
+
 	if (!subscription) return <Plans products={products} />;
+
 	return (
 		<div className='relative bg-[linear-gradient(to_bottom,rgba(20,20,20,0)_0%,rgba(20,20,20,0.15)_15%,rgba(20,20,20,0.35)_29%,rgba(20,20,20,0.58)_44%,#141414_58%,#141414_100%)] rounded lg:h-[160vh] '>
 			<Head>
@@ -114,24 +140,7 @@ const Home = ({
 
 export default Home;
 
-// const payments = getStripePayments(app, {
-// 	productsCollection: 'products',
-// 	customersCollection: 'customers',
-// });
-
 export const getServerSideProps = async () => {
-	// console.log('Fetching products...1');
-	// const products = await getProducts(payments, {
-	// 	includePrices: true,
-	// 	activeOnly: true,
-	// })
-	// 	.then((res) => res)
-	// 	.catch((error) => {
-	// 		console.log('Error fetching products:', error);
-	// 		return [];
-	// 	});
-	// console.log('Fetching products...2');
-
 	try {
 		//  Firestore 產品獲取邏輯
 		const productsCollection = collection(db, 'products');
