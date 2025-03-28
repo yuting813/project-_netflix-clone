@@ -89,16 +89,19 @@ function Login() {
 				alt='Login page background image'
 				className='-z-10 hidden brightness-[50%] sm:inline object-cover absolute inset-0 h-screen w-screen '
 				fill
+				sizes='100vw'
 				priority
+				quality={75}
 			/>
 
-			<img
-				src='./logo.svg'
-				width={70}
-				height={70}
+			<Image
+				src='/logo.svg'
+				width={75}
+				height={75}
 				className='absolute left-4 top-4  cursor-pointer object-contain md:left-10 md:top-6 '
 				alt='logo'
-				sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+				priority
+				sizes='75px'
 			/>
 
 			<form
