@@ -2,11 +2,11 @@ import { CheckIcon, PlusIcon, ThumbUpIcon, VolumeOffIcon, XIcon } from '@heroico
 import { VolumeUpIcon } from '@heroicons/react/solid';
 import MuiModal from '@mui/material/Modal';
 import { collection, deleteDoc, doc, DocumentData, onSnapshot, setDoc } from 'firebase/firestore';
+import { useRecoilState } from 'recoil';
 import { useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { FaPlay } from 'react-icons/fa';
 import ReactPlayer from 'react-player/lazy';
-import { useRecoilState } from 'recoil';
 import { modalState, movieState } from '../atoms/modalAtom';
 import { db } from '../firebase';
 import useAuth from '../hooks/useAuth';
@@ -86,15 +86,31 @@ function Modal() {
 	);
 
 	const handleList = async () => {
+		if (!user) {
+			toast('Please sign in to add movies to your list', {
+				duration: 8000,
+				style: toastStyle,
+			});
+			return;
+		}
+
+		if (!movie) {
+			toast('Unable to add movie, please try again later', {
+				duration: 8000,
+				style: toastStyle,
+			});
+			return;
+		}
+
 		if (addedToList) {
-			await deleteDoc(doc(db, 'customers', user!.uid, 'myList', movie?.id.toString()!));
+			await deleteDoc(doc(db, 'customers', user.uid, 'myList', movie.id.toString()));
 
 			toast(`${movie?.title || movie?.original_name} has been removed from My List`, {
 				duration: 8000,
 				style: toastStyle,
 			});
 		} else {
-			await setDoc(doc(db, 'customers', user!.uid, 'myList', movie?.id.toString()!), { ...movie });
+			await setDoc(doc(db, 'customers', user.uid, 'myList', movie.id.toString()), { ...movie });
 
 			toast(`${movie?.title || movie?.original_name} has been added to My List`, {
 				duration: 8000,
@@ -155,7 +171,9 @@ function Modal() {
 				<div className='flex space-x-16 rounded-b-md bg-[#181818] px-10 py-8'>
 					<div className='space-y-6 text-lg'>
 						<div className='flex items-center space-x-2 text-sm'>
-							<p className='font-semibold text-green-400'>{movie!.vote_average * 10}% Match</p>
+							<p className='font-semibold text-green-400'>
+								{movie?.vote_average ? `${(movie.vote_average * 10).toFixed(0)}%` : ''}Match
+							</p>
 							<p className='font-light'>{movie?.release_date || movie?.first_air_date}</p>
 							<div className='flex h-4 items-center justify-center rounded border border-white/40 px-1.5 text-xs'>
 								HD

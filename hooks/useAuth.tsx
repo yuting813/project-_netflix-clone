@@ -103,7 +103,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 		resetError();
 		try {
 			const userCredential = await signInWithEmailAndPassword(auth, email, password);
-			console.log(userCredential.user);
 			setUser(userCredential.user);
 			return { success: true };
 		} catch (error) {

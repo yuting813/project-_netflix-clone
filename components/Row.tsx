@@ -1,19 +1,16 @@
-import { Movie } from '@/typings';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/outline';
-import Thumbnail from './Thumbnail';
-import { useRef, useState } from 'react';
-import React from 'react';
 import { DocumentData } from 'firebase/firestore';
+import React, { useRef, useState } from 'react';
+import { Movie } from '@/typings';
+import Thumbnail from './Thumbnail';
 
 interface Props {
 	title: string;
-	//When using firebase
 	movies: Movie[] | DocumentData[];
-	// movies: Movie[];
 }
 
 function Row({ title, movies }: Props) {
-	const rowRef = useRef<HTMLDivElement>(null); //??const rowRef = useRef<HTMLDivElement>(null)
+	const rowRef = useRef<HTMLDivElement>(null);
 	const [isMoved, setIsMoved] = useState(false);
 
 	const handleClick = (direction: string) => {
@@ -21,7 +18,6 @@ function Row({ title, movies }: Props) {
 		if (rowRef.current) {
 			const { scrollLeft, clientWidth } = rowRef.current;
 			const scrollTo = direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth;
-
 			rowRef.current.scrollTo({ left: scrollTo, behavior: 'smooth' });
 		}
 	};

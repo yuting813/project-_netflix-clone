@@ -1,8 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
-import useAuth from '@/hooks/useAuth';
 import { BellIcon, SearchIcon } from '@heroicons/react/solid';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import useAuth from '@/hooks/useAuth';
 
 function Header() {
 	const [isScrolled, setIsScrolled] = useState(false);
@@ -25,13 +26,12 @@ function Header() {
 	return (
 		<header className={`${isScrolled && 'bg-[#141414]'}`}>
 			<div className='flex items-center space-x-2 md:space-x-6'>
-				<img
-					// src='https://rb.gy/ulxxee'
-					src='./logo.svg'
+				<Image
+					src='/logo.svg'
 					width={40}
 					height={40}
 					className='cursor-pointer object-contain'
-					alt=''
+					alt='logo'
 				/>
 
 				<ul className='hidden space-x-4 md:flex'>

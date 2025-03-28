@@ -1,14 +1,12 @@
-/* eslint-disable prettier/prettier */
-import { modalState, movieState } from '@/atoms/modalAtom';
-import { Movie } from '@/typings';
+import { DocumentData } from 'firebase/firestore';
 import Image from 'next/image';
 import { useRecoilState } from 'recoil';
-import { DocumentData } from 'firebase/firestore';
 import { useState } from 'react';
+import { modalState, movieState } from '@/atoms/modalAtom';
+import { Movie } from '@/typings';
 
 interface Props {
 	movie: Movie | DocumentData;
-	// movie: Movie;
 }
 
 function Thumbnail({ movie }: Props) {

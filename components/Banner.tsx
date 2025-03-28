@@ -1,13 +1,11 @@
-/* eslint-disable @next/next/no-img-element */
+import { InformationCircleIcon } from '@heroicons/react/outline';
+import Image from 'next/image';
+import { useRecoilState } from 'recoil';
+import React, { useEffect, useState } from 'react';
 import { FaPlay } from 'react-icons/fa';
+import { modalState, movieState } from '@/atoms/modalAtom';
 import { baseUrl } from '@/constants/movie';
 import { Movie } from '@/typings';
-import autoprefixer from 'autoprefixer';
-import Image from 'next/image';
-import React, { useEffect, useState } from 'react';
-import { InformationCircleIcon } from '@heroicons/react/outline';
-import { useRecoilState } from 'recoil';
-import { modalState, movieState } from '@/atoms/modalAtom';
 
 interface Props {
 	netflixOriginals: Movie[];

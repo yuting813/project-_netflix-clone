@@ -1,6 +1,9 @@
 import { getApp } from '@firebase/app';
-import { getProducts, createCheckoutSession } from '@invertase/firestore-stripe-payments';
-import { getStripePayments } from '@invertase/firestore-stripe-payments';
+import {
+	createCheckoutSession,
+	getProducts,
+	getStripePayments,
+} from '@invertase/firestore-stripe-payments';
 import { loadStripe } from '@stripe/stripe-js';
 
 // 初始化 Firebase app
