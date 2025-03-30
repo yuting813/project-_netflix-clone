@@ -77,7 +77,7 @@ function Modal() {
 			);
 			return unsubscribe; // Important to unsubscribe when the component unmounts.
 		}
-	}, [user, db]);
+	}, [user]);
 
 	// Check if the movie is already in the user's list
 	useEffect(
