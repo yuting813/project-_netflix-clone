@@ -1,11 +1,11 @@
 [English](README.md) | [繁體中文](README.zh-TW.md)
 
-# TMDB Streaming Architecture — Production-Ready Reference Implementation
+# TMDB Streaming Architecture — A Production-Grade Frontend Reference Implementation
 
-This repository is a technical reference implementation of a streaming media frontend architecture, focusing on resolving **asynchronous state dependency chains** and **complex edge cases**. It demonstrates how to design a **predictable, error-resilient, and highly defensive** state management system integrated across three distinct asynchronous streams: **Firebase Auth (Identity)**, **Stripe (Subscription/Payment)**, and **TMDB (Static Media Catalog)**.
+This project is a **technical reference implementation** for a streaming media frontend architecture. It focuses on resolving **state dependencies across multiple asynchronous data flows** and handling **boundary edge cases**. The architecture demonstrates how to build a **predictable, fault-tolerant, and defensively designed** state management system across **Firebase Auth** (authentication), **Stripe** (subscription billing), and the **TMDB API** (media data).
 
-- **Live Showcase**: [stream.tinahu.dev](https://stream.tinahu.dev/)
-- **Test Credentials**: Email `demo@tinahu.dev` / Password `Demo1234!` (Includes Stripe test subscription permissions)
+- **Live Reference Deployment**: [stream.tinahu.dev](https://stream.tinahu.dev/)
+- **Test Credentials**: Email `demo@tinahu.dev` / Password `Demo1234!` (account pre-activated with a test subscription)
 
 [![Continuous Integration](https://github.com/yuting813/TMDB-Streaming-Architecture/actions/workflows/ci.yml/badge.svg)](https://github.com/yuting813/TMDB-Streaming-Architecture/actions)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
@@ -19,163 +19,190 @@ This repository is a technical reference implementation of a streaming media fro
 
 ---
 
-## Core Architecture & Engineering Decisions
+## Architectural Decisions
 
 ### 1. Guarded Render Chain
 
-In asynchronous data flows (e.g., Firestore queries can only be initiated after the Firebase Auth state is confirmed), using deep nested `if-else` blocks or combining all conditions into a single statement (e.g., `if (auth && sub && !loading)`) results in highly unmaintainable logic.
+In asynchronous data flows (e.g., Firebase Auth state must be confirmed before querying Firestore for subscription plans), deeply nested `if-else` blocks — or a single monolithic condition trying to cover everything (`if (auth && sub && !loading)`) — quickly become unmaintainable.
 
-**Design Decision**: Discarded nested structures in favor of a strict **Early Return Guard Chain** (Guard Clauses) in `pages/index.tsx`. Each `if` layer acts as an independent security checkpoint, focusing exclusively on a single defensive boundary:
+**Decision**: `pages/index.tsx` abandons nested conditionals in favor of a strict **early-return guard chain** (guard clauses). Each `if` acts as an independent checkpoint responsible for exactly one boundary:
 
 ```tsx
-// Layer 1 — Loading Guard: Full-screen Spinner if any data source is loading
+// Layer 1 — Loading guard: Full-screen spinner while any data source is loading
 if (authLoading || subscriptionLoading) return <Loader />;
 
-// Layer 2 — Auth Guard: Block rendering for unauthenticated users
-// (Redirect is handled by the onAuthStateChanged callback inside useAuth)
+// Layer 2 — Auth guard: Blocks mounting for unauthenticated users
+// (Redirection is handled inside useAuth's onAuthStateChanged callback)
 if (!user) return null;
 
-// Layer 3 — Error Handling: Fallback UI for Firestore connection failures
+// Layer 3 — Error handling: Fallback UI with a "reload" button on Firestore connection errors
 if (subscriptionError) return <ErrorState />;
 
-// Layer 4 — Permission Guard: Lock users without active subscriptions to the Plans page
+// Layer 4 — Access guard: Users without an active subscription are routed to the plans page
 if (!subscription) return <Plans products={products} />;
 
-// Layer 5 — Mount the main core component after passing all guards
+// Layer 5 — All guards passed: Mount the core content
 return <MainContent />;
 ```
 
-The advantage: If new edge cases need to be added in the future, simply insert another `if` layer without risking regression bugs.
+**Payoff**: Adding a new edge case in the future only requires inserting one more `if` statement—eliminating the risk of regressions in existing guards.
 
 ---
 
-### 2. `initialLoading` — The Root Solution to FOUC
+### 2. `initialLoading` — Eradicating FOUC and Screen Flicker
 
-Firebase authentication relies on asynchronous callbacks. Before the SDK confirms the user's state, `user` temporarily resolves to `null`. If route guards are triggered at this exact moment, an already-logged-in user will experience a severe Flash of Unauthenticated Content (FOUC) from the "Login Page → Home Page".
+Firebase authentication resolution is asynchronous. Before the SDK confirms the user's state, `user` is temporarily `null`. If a route guard fires prematurely, an already-logged-in user experiences a jarring "logged-out screen → home page" flash (Flash of Unauthenticated Content, FOUC).
 
-**Design Decision**: Implemented a robust `initialLoading` timing lock within `useAuth`. Children rendering is forcibly intercepted until the first `onAuthStateChanged` callback confirmation is received:
+**Decision**: `useAuth` implements a firm `initialLoading` timing lock, blocking children from rendering until the first `onAuthStateChanged` callback resolves:
 
 ```tsx
 <AuthContext.Provider value={memoedValue}>
-	{initialLoading ? <Loader /> : children}
+	{initialLoading ? (
+		<div className='flex h-screen w-screen items-center justify-center bg-black'>
+			<Loader color='fill-red-600' />
+		</div>
+	) : (
+		children
+	)}
 </AuthContext.Provider>
 ```
 
+**Auto-logout timer**: `useAuth` also sets a 30-minute `setTimeout` after login, executing `logout()` when it expires to force-end the session. This timer is cleared via a `useEffect` cleanup function upon manual logout or component unmount, preventing dangling callbacks.
+
 ---
 
-### 3. API Defense Layer: The Three Lines of Defense for `tmdbFetch`
+### 3. API Defense Layer: `tmdbFetch`'s Three Lines of Defense
 
-Direct usage of native `fetch()` within components is strictly prohibited. All network requests are routed through `utils/request.ts`, enforcing three major protections:
+Components are strictly prohibited from calling native `fetch()` directly. All network requests are routed through `utils/request.ts`, which enforces three layers of protection:
 
-1. **Request Deduplication (In-flight Cache)**: `getStaticProps` runs 8 requests in parallel, and different routing pages may contain duplicate URLs. Using a module-level `Map<string, Promise>` cache, identical URLs return the exact same Promise instance, blocking duplicate traffic. If the Promise rejects, the cache entry is automatically cleared to allow retries.
-2. **Build Hang Prevention (Timeout)**: An `AbortController` with an 8-second timeout is built-in to prevent unstable TMDB network conditions from causing Next.js builds to hang indefinitely.
-3. **Safe Interruption Aggregation (`mergeAbortSignals`)**: Perfectly unifies "Network Timeout Events" and "Component Unmount Events". Firing an Abort from either side cleanly terminates the underlying `fetch`. After aborting, `removeEventListener` is synchronously executed to clear the listeners of both original signals, completely eradicating React Memory Leaks and dangling asynchronous callbacks. (Note: hand-rolled as a Safari polyfill — `AbortSignal.any()` is not supported in older Safari versions.)
+1. **Request Deduplication (In-flight Cache)**: `getStaticProps` fires 8 parallel TMDB requests alongside a Firestore product query, and different route pages may share duplicate URLs. A module-level `Map<string, Promise>` cache returns the exact same Promise instance for a repeated URL, effectively blocking duplicate traffic. On rejection, the cache entry is cleared to allow subsequent retries.
+2. **Build-Hang Protection (Timeout)**: A built-in `AbortController` enforces an 8-second timeout, preventing an unstable TMDB connection from hanging the Next.js build process indefinitely.
+3. **Safe Signal Aggregation (`mergeAbortSignals`)**: Gracefully reconciles a "network timeout" event with a "component unmount" event—either can cleanly terminate the underlying `fetch`. After an abort, listeners on both original signals are synchronously removed via `removeEventListener`, substantially reducing the risk of React memory leaks and dangling async callbacks. (Hand-written as a Safari polyfill, since older Safari versions lack support for `AbortSignal.any()`).
 
 ---
 
 ### 4. Modal Race Condition Defense (Stale Response Ignore)
 
-When a user rapidly clicks through the movie list, an old `fetch` result might arrive after a new Modal has already rendered, overwriting the state and causing UI corruption (Race Condition).
+When a user rapidly clicks through the movie list, an earlier `fetch` result can arrive after a new modal has already been rendered. This overwrites the new state with stale data, causing visual corruption (a race condition).
 
-**Design Decision**: Utilized closure variables to track the component's mount lifecycle. If an old asynchronous result returns after the Modal has closed or switched, the stale payload is actively discarded, preventing React Memory Leak warnings and UI pollution caused by race conditions:
+**Decision**: A closure variable `active` inside `useEffect` tracks the component's mount lifecycle. Before applying any state updates, the `fetchMovie` async function checks the `active` flag. If the modal has closed or switched by the time the response arrives, the stale payload is deliberately discarded:
 
 ```tsx
-let active = true;
-async function fetchMovie() {
-  const data = await tmdbFetch(...);
-  if (!active) return; // Discard stale results upon component unmount to prevent state pollution
-  setTrailer(key);
-}
-return () => { active = false; };
+useEffect(() => {
+  if (!movie) return;
+  let active = true;
+
+  async function fetchMovie() {
+    const data = await tmdbFetch(...).catch(() => null);
+    if (!active) return; // Discard stale results after unmount, preventing state pollution
+    setTrailer(key);
+    setGenres(data?.genres || []);
+  }
+
+  fetchMovie();
+  return () => { active = false; };
+}, [movie]);
 ```
+
+This pattern defends against both React's memory-leak warnings and UI state pollution originating from out-of-order asynchronous responses.
 
 ---
 
 ### 5. Dual-Track State Architecture: ISR + Firestore
 
-The update frequencies of the movie list and user profile data are vastly different. Forcing them into the same data layer would lead to state decoupling. This project splits the data flow based on its characteristics:
+Movie catalog data and user profile data update at fundamentally different frequencies. Forcing both onto the same data layer inevitably leads to state desynchronization. This project splits the data flow by characteristic:
 
-| Track               | Mechanism                                              | Trigger Timing                           | Single Source of Truth (SSOT) |
-| ------------------- | ------------------------------------------------------ | ---------------------------------------- | ----------------------------- |
-| Movie Category Data | Next.js ISR (`getStaticProps` + `revalidate: 3600`)    | Build Time + Hourly background increment | TMDB API                      |
-| User Profile Data   | Firestore `onSnapshot` (`useList` / `useSubscription`) | Real-time push on any DB change          | Firestore                     |
+| Track | Mechanism | Trigger | Single Source of Truth (SSOT) |
+| --- | --- | --- | --- |
+| Movie Catalog Data | Next.js ISR (`getStaticProps` + `revalidate: 3600`) | Build time + hourly background revalidation | TMDB API |
+| User Profile Data | Firestore `onSnapshot` (`useList` / `useSubscription`) | Push-based, on any DB change | Firestore |
 
-**Design Decision**: For the user's "My List", I abandoned the traditional approach of storing state in Redux/Recoil before asynchronously pushing it to the backend. Instead, Firestore is used directly as the SSOT. The component is only responsible for triggering writes and relies on `onSnapshot` to passively receive changes, completely eliminating the risk of state inconsistency caused by premature UI updates.
+**Decision**: For the user's "My List", rather than storing state in Redux/Recoil and asynchronously pushing it to the backend, Firestore is treated directly as the SSOT. Components only trigger writes and passively receive changes via `onSnapshot`. This entirely eliminates the risk of state inconsistency caused by the UI state getting ahead of the backend.
 
-**Error Fallback**: The `catch` block in `getStaticProps` returns an empty array when a TMDB request fails and shortens the `revalidate` to 60 seconds, ensuring a quick rebuild retry after a build failure.
+**Subscription query condition**: `useSubscription` queries using `where('status', 'in', ['active', 'trialing'])`, meaning a single guard effortlessly covers both standard active subscriptions and users in their trial period.
 
----
-
-### 6. State Selection: Context vs. Recoil (Decoupling by Data Flow)
-
-- **Auth (React Context)**: Authentication state is a top-of-the-tree dependency with a low mutation frequency. `useAuth` encapsulates the complete Firebase subscription lifecycle and automatic logout timer protection, using `useMemo` to block rendering noise.
-
-- **UI State (Recoil Atom)**: Using Context for Banner, Thumbnail, and Modal would trigger large-scale, unnecessary re-renders. This system uses Recoil atoms as a lightweight Publish/Subscribe event bus, completely decoupling the components—clicking a Thumbnail simply calls `setCurrentMovie(movie)` without any Prop Drilling.
-
-  **Write-Side Isolation**: `Thumbnail` utilizes `useSetRecoilState` (pure write setter) instead of `useRecoilState`. Because the Thumbnail only needs to dispatch state and never read it, `useSetRecoilState` ensures that none of the thumbnail components are registered as subscribers to the Recoil atom, completely eradicating the O(N) chain-rendering issue where "clicking any thumbnail causes all thumbnails on the screen to re-render simultaneously". The `Home` page itself also holds no references to `modalState`, ensuring page-level components are fully detached from the UI interaction state subscription chain.
+**Error fallback**: On a TMDB request failure, the `getStaticProps` catch block returns an empty array and shortens `revalidate` to 60 seconds. This ensures a failed build retries as soon as possible.
 
 ---
 
-## System Architecture Diagram
+### 6. State Selection: Context vs. Recoil (Decoupled by Data Flow)
+
+- **Auth (React Context)**: Authentication state sits at the top of the component tree and mutates infrequently. `useAuth` encapsulates the complete Firebase subscription lifecycle and the auto-logout timer, utilizing `useMemo` to block unnecessary render noise.
+
+- **UI State (Recoil Atom)**: Using Context for the Banner, Thumbnail, and Modal would trigger widespread, unnecessary re-renders. This system leverages Recoil atoms as a lightweight publish/subscribe event bus, fully decoupling components. Clicking a Thumbnail only requires `setCurrentMovie(movie)`, completely bypassing prop drilling.
+
+  **Write-Side Isolation**: `Thumbnail` utilizes `useSetRecoilState` (a write-only setter) rather than `useRecoilState`. Because the Thumbnail only ever writes and never reads this state, `useSetRecoilState` ensures no thumbnail component is registered as a subscriber to the Recoil atom. This elegantly bypasses the O(N) cascading re-render problem, where clicking one thumbnail would otherwise force every thumbnail on the screen to re-render. The `Home` page itself also holds no reference to `modalState`, keeping page-level components entirely outside the UI interaction state's subscription chain.
+
+---
+
+## System Architecture
 
 ```mermaid
 graph TD
     subgraph "Build Time — ISR"
-        A[getStaticProps] -->|Promise.all x8| B["tmdbFetch&lt;T&gt;()"]
+        A[getStaticProps] -->|Promise.all x8 + Firestore products| B["tmdbFetch&lt;T&gt;()"]
         B -->|revalidate 3600| C[Static HTML + Props]
     end
 
     subgraph "Runtime — Auth Layer"
         D[Firebase onAuthStateChanged] --> E[AuthProvider Context]
         E -->|initialLoading gate| F[App Children Mounted]
+        E -->|30-min timer| G[Auto-logout]
     end
 
     subgraph "Runtime — Firestore Realtime"
-        E -->|user.uid| G[useSubscription onSnapshot]
-        E -->|user.uid| H[useList onSnapshot]
-        G -->|subscription / loading / error| I[5-Layer Guard Chain]
-        H -->|list array| J[My List Row]
+        E -->|user.uid| H["useSubscription onSnapshot (active|trialing)"]
+        E -->|user.uid| I[useList onSnapshot]
+        H -->|subscription / loading / error| J[5-Layer Guard Chain]
+        I -->|list array| K[My List Row]
     end
 
     subgraph "UI State — Recoil"
-        K[Banner / Thumbnail] -->|setCurrentMovie + setShowModal| L[Recoil Atoms]
-        L -->|movieState / modalState| M[Modal Component]
+        L[Banner / Thumbnail] -->|setCurrentMovie + setShowModal| M[Recoil Atoms]
+        M -->|movieState / modalState| N[Modal Component]
     end
 
-    C --> I
-    I -->|All guards pass| N[Full Home Page]
-    N --> K
+    C --> J
+    J -->|All guards pass| O[Full Home Page]
+    O --> L
 ```
 
 ---
 
-## Edge Case Handling & Quality Assurance
+## Edge Cases and System Stability
 
-- **3-State Image Machine**: Every image component maintains three states—Loading (`animate-pulse` Skeleton to prevent CLS), Success (`opacity-100` fade-in to prevent flashing), and Failure (local fallback image to prevent broken links). `onError` simultaneously triggers `setIsLoaded(true)`, ensuring the skeleton instantly disappears once the fallback initiates. Implemented in both `Thumbnail.tsx` and `Modal.tsx`.
-- **Immutable Route Whitelist**: `Object.freeze(['/login', ...])` ensures that the Auth guard's judgment criteria cannot be accidentally mutated. As a strict engineering discipline, this preemptively catches accidental mutations during development via TypeErrors, favoring "foolproofing" in our defensive design.
-- **Jest Unit Testing**: Focused on `useSubscription`, utilizing Mock Firestore to test 6 boundary state machine transitions: `null user`, `empty list`, `onSnapshot error`, `loading`, `subscription active`, and `subscription inactive`, validating robustness under extreme scenarios.
+- **Image Loading State Management**: Every image component tracks three distinct phases: loading (a gradient `animate-pulse` skeleton to prevent layout shift/CLS), success (an `opacity-100` fade-in transition to avoid harsh flashes), and failure (a local `/fallback-image.webp` to prevent broken image icons). `onError` triggers `setIsLoaded(true)` so the skeleton unmounts immediately when the fallback appears, layering an "Image unavailable" overlay on top to clearly communicate the failure state to the user. Implemented in `Thumbnail.tsx` and `Modal.tsx`.
+- **Tamper-Resistant Route Allowlist**: `Object.freeze(['/login', '/signup', '/reset', '/pricing'])` freezes the constant, guaranteeing the auth route guard's reference list cannot be accidentally mutated. As an engineering discipline, this surfaces misuses early in development (via `TypeError`), adhering to a "fail-fast over fail-safe" defensive philosophy.
+- **Modal Accessibility Focus Trap**: When a modal opens, `document.activeElement` is preserved in `triggerRef`. A `keydown` listener forces Tab focus to cycle strictly among all focusable elements inside the modal, supporting ESC to close and Space to toggle playback. Upon closing, focus is synchronously restored to the original trigger element via `triggerRef.current?.focus()`, perfectly aligning with WCAG accessibility guidelines.
+- **Jest Unit Tests**: Tests are focused heavily on `useSubscription`, utilizing a mocked Firestore to validate 6 critical boundary state transitions: `null user`, `empty list`, `onSnapshot error`, `loading`, `subscription active`, and `subscription inactive`. This rigorously validates code robustness under complex asynchronous conditions.
 
 ---
 
 ## Project Structure
 
-```
-pages/          # Routing entry points (Keep logic minimal, delegate complexity to Hooks)
-components/     # UI Presentation Layer (Does not handle direct API calls)
+```text
+pages/          # Route entry points (kept minimal, complexity delegated to hooks)
+components/     # UI presentation layer (no direct API calls)
 hooks/          # Defensive state management logic (useAuth / useSubscription / useList)
 atoms/          # Atomic Recoil state
-utils/          # API forwarding interface and network layer defense implementations
+utils/          # API forwarding interface and network-layer defenses
+constants/      # Shared configuration constants
+types/          # TypeScript type definitions
 ```
 
-## Firestore Data Schema and Security Rules
+## Firestore Schema and Security Rules
 
-### 1. Data Schema
+### 1. Data Model
 
-```
+```text
 customers/
   {uid}/
     subscriptions/
       {subscriptionId} → { status, current_period_start, current_period_end }
+    payments/
+      {paymentId} → { ... }
+    checkout_sessions/
+      {sessionId} → { ... }   ← The only sub-collection clients are allowed to write to
     myList/
       {movieId} → { id, title, poster_path, backdrop_path, ... }
 
@@ -183,27 +210,30 @@ products/
   {productId}/
     prices/
       {priceId} → { unit_amount, currency, interval }
+    tax_rates/
+      {taxRateId} → { ... }
 ```
 
-### 2. Security Rules Design
+### 2. Security Rule Design
 
-This project configures read/write permissions based on functional requirements:
+This project's `firestore.rules` meticulously separates read/write access by functional boundary:
 
-- **User Data Isolation**: `customers/{uid}` and its sub-collections are restricted to `request.auth.uid == uid`, ensuring only the authenticated owner can access their personal data.
-- **Sensitive Data Read-Only**: User subscription (`subscriptions`) and payment (`payments`) records are set to **read-only** (`allow read`) on the client side. State updates must be processed securely on the backend via the Stripe Webhook (Stripe Firebase Extension), preventing client-side data tampering.
-- **Public Catalog Read-Only**: Product metadata (`products/**`) is set to public read-only (`allow read: if true`), with write access strictly prohibited for all clients.
+- **User Data Isolation**: `customers/{uid}` and its sub-collections are tightly restricted to `request.auth.uid == uid`, ensuring only the authenticated owner of that specific credential can access the data.
+- **Read-Only Sensitive Data**: A user's subscription records (`subscriptions`) and payment records (`payments`) strictly grant `read` access in the security rules. Clients cannot directly modify subscription states—updates flow securely through the Stripe Webhook (Stripe Firebase Extension) on the backend, structurally preventing client-side tampering.
+- **Checkout Sessions (Read/Write)**: `checkout_sessions` is the *only* sub-collection clients are permitted to write to, as the Stripe Checkout flow requires the client to instantiate a session document to initiate payment. This exemplifies a minimal write-surface design.
+- **Public Read-Only Plans**: Plan metadata (`products/**`, including `prices` and `tax_rates`) is configured to be publicly readable (`allow read: if true`) and explicitly blocks any client-side writes.
 
 ---
 
-## Author & Engineering Philosophy
+## Author and Engineering Philosophy
 
-Drawing from a background in risk management and scenario anticipation, I focus on **Defensive Frontend Engineering** and building highly resilient codebases.
+Drawing from a background in risk management—particularly a sensitivity to anticipating extreme scenarios—I apply these principles to software development, focusing heavily on **defensive frontend engineering** and codebase resilience.
 
-This reference implementation demonstrates how to apply these risk-mitigation principles to asynchronous web applications—utilizing loading lifecycles for media assets, Safari-compatible stream cancelations, and strict route guarding to protect the user experience against network degradation.
+This project demonstrates how that philosophy applies to a complex asynchronous system: whether it's the streaming media three-state state machine, centralized AbortSignal cleanup compatible with older Safari versions, the 30-minute session auto-expiry guard, or the multi-layer route guard chain. Every architectural decision is engineered to keep the user experience and system state as predictable and consistent as possible, even when underlying APIs or networks become unstable.
 
 - **Website**: [tinahu.dev](https://www.tinahu.dev/)
 - **GitHub**: [yuting813](https://github.com/yuting813)
 - **Email**: [tinahuu321@gmail.com](mailto:tinahuu321@gmail.com)
 
 > **Educational Use Disclaimer**
-> This project is solely for personal technical demonstration and educational purposes. It is **NOT** a commercial product and is not affiliated with any streaming media service. All movie data is provided by the [TMDB API](https://www.themoviedb.org/).
+> This project is solely for personal technical demonstration and educational purposes. It is **not** a commercial product and is not affiliated with any streaming media service. Movie data is sourced via the public [TMDB API](https://www.themoviedb.org/).
