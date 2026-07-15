@@ -15,7 +15,7 @@ import { auth } from '../firebase';
 const TOKEN_EXPIRATION_TIME = 30 * 60 * 1000;
 
 // 固定 public paths，避免 array reference 變動
-const PUBLIC_PATHS = Object.freeze(['/login', '/signup', '/reset', '/pricing']);
+const PUBLIC_PATHS = Object.freeze(['/login', '/signup', '/checkout-status']);
 
 interface AuthResponse {
 	success: boolean;
