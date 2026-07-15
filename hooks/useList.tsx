@@ -17,7 +17,7 @@ function useList(uid: string | undefined) {
 				})),
 			);
 		});
-	}, [db, uid]);
+	}, [uid]);
 
 	return list;
 }

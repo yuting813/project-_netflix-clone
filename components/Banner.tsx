@@ -48,7 +48,7 @@ function Banner({ streamOriginals }: Props) {
 				{movie?.title || movie?.name || movie?.original_name}
 			</h1>
 
-			<p className='line-clamp-3 max-w-xs text-xs text-shadow-md md:max-w-lg md:text-lg lg:max-w-2xl lg:text-2xl'>
+			<p className='line-clamp-3 max-w-xs text-xs drop-shadow-md md:max-w-lg md:text-lg lg:max-w-2xl lg:text-2xl'>
 				{movie?.overview}
 			</p>
 

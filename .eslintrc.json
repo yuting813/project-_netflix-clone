@@ -1,5 +1,6 @@
 {
 	"root": true,
+	"ignorePatterns": ["next-env.d.ts", ".next/**"],
 	"parser": "@typescript-eslint/parser",
 	"plugins": ["@typescript-eslint", "import"],
 	"extends": [
@@ -21,6 +22,12 @@
 
 		"prettier/prettier": "off" // ⭐ 關閉 Prettier rule（必要）
 	},
+	"overrides": [
+		{
+			"files": ["*.js"],
+			"rules": { "@typescript-eslint/no-var-requires": "off" }
+		}
+	],
 	"settings": {
 		"react": {
 			"version": "detect"
