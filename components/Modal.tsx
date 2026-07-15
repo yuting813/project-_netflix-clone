@@ -30,7 +30,6 @@ function Modal() {
 	const [showModal, setShowModal] = useRecoilState(modalState);
 	const [movie] = useRecoilState(movieState);
 
-	const triggerRef = useRef<HTMLElement | null>(null);
 	const modalRef = useRef<HTMLDivElement | null>(null);
 
 	const [trailer, setTrailer] = useState('');
@@ -179,61 +178,7 @@ function Modal() {
 	   =========================================================== */
 	const handleClose = useCallback(() => {
 		setShowModal(false);
-		setTimeout(() => {
-			triggerRef.current?.focus();
-		}, 0);
 	}, [setShowModal]);
-
-	useEffect(() => {
-		if (showModal) triggerRef.current = document.activeElement as HTMLElement;
-	}, [showModal]);
-
-	/* Focus trap */
-	useEffect(() => {
-		const handleTab = (e: KeyboardEvent) => {
-			if (e.key !== 'Tab' || !modalRef.current) return;
-
-			const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-				'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-			);
-
-			if (!focusable.length) return;
-
-			const first = focusable[0];
-			const last = focusable[focusable.length - 1];
-			const active = document.activeElement;
-
-			if (e.shiftKey) {
-				if (active === first) {
-					e.preventDefault();
-					last.focus();
-				}
-			} else {
-				if (active === last) {
-					e.preventDefault();
-					first.focus();
-				}
-			}
-		};
-
-		if (showModal) window.addEventListener('keydown', handleTab);
-		return () => window.removeEventListener('keydown', handleTab);
-	}, [showModal]);
-
-	/* ESC and Space to close/toggle */
-	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key === 'Escape') {
-				handleClose();
-			} else if (e.code === 'Space') {
-				// Prevent scrolling
-				e.preventDefault();
-				handlePlayClick();
-			}
-		};
-		if (showModal) window.addEventListener('keydown', onKey);
-		return () => window.removeEventListener('keydown', onKey);
-	}, [handleClose, showModal, handlePlayClick]);
 
 	/* ===========================================================
 	   Badge Component (stream 透明邊框)
@@ -250,6 +195,7 @@ function Modal() {
 	return (
 		<MuiModal
 			open={showModal}
+			aria-labelledby='movie-modal-title'
 			onClose={handleClose}
 			className='fixed !top-7 left-0 right-0 z-50 mx-auto w-full max-w-5xl overflow-hidden overflow-y-scroll rounded-md scrollbar-hide'
 		>
@@ -258,6 +204,9 @@ function Modal() {
 				tabIndex={-1}
 				className='relative overflow-hidden rounded-xl bg-[#181818] outline-none'
 			>
+				<h2 id='movie-modal-title' className='sr-only'>
+					{movie?.title || movie?.name || 'Title details'}
+				</h2>
 				<Toaster position='bottom-center' />
 
 				{/* Close Button */}

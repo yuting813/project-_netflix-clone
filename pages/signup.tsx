@@ -54,9 +54,11 @@ function Signup() {
 				quality={75}
 			/>
 
-			<img
+			<Image
 				src='/logo.svg'
-				alt='logo'
+				alt='Stream home'
+				width={75}
+				height={75}
 				className='absolute left-4 top-14 h-[75px] w-[75px] cursor-pointer object-contain md:left-10 md:top-16'
 			/>
 			<div className='mt-28 flex w-full flex-grow flex-col items-center justify-center px-4 md:mt-0'>
