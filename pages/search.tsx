@@ -55,9 +55,7 @@ export default function SearchPage() {
 				{!loading && results.length === 0 && <p>No results found.</p>}
 				<div className='grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'>
 					{results.map((r) => (
-						<div key={r.id} className='mb-4'>
-							<Thumbnail movie={r} orientation='poster' tallOnLarge />
-						</div>
+						<Thumbnail key={r.id} movie={r} orientation='poster' fluid />
 					))}
 				</div>
 				{/* Mount the Modal so it can react to Recoil state set by Thumbnail clicks */}

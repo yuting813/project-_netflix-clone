@@ -1,4 +1,4 @@
-import type { Config } from 'tailwindcss'
+import type { Config } from 'tailwindcss';
 
 const config: Config = {
 	content: [
@@ -14,11 +14,7 @@ const config: Config = {
 			},
 		},
 	},
-	plugins: [
-		require('tailwind-scrollbar-hide'),
-		require('tailwind-scrollbar'),
-		require('tailwindcss-textshadow'),
-	],
-}
+	plugins: [require('tailwind-scrollbar-hide'), require('tailwind-scrollbar')],
+};
 
-export default config
+export default config;

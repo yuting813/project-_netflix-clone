@@ -11,6 +11,8 @@ interface Props {
 	// when true, make poster thumbnails taller on large screens (used by search page)
 	tallOnLarge?: boolean;
 	priority?: boolean;
+	/** when true, fills the grid cell using aspect-ratio instead of fixed height */
+	fluid?: boolean;
 }
 
 function Thumbnail({
@@ -18,6 +20,7 @@ function Thumbnail({
 	orientation = 'backdrop',
 	tallOnLarge = false,
 	priority = false,
+	fluid = false,
 }: Props) {
 	// We only need to set the state, not read it.
 	// using useSetRecoilState prevents all Thumbnails from re-rendering when the state changes!
@@ -32,13 +35,18 @@ function Thumbnail({
 			: movie.backdrop_path || movie.poster_path;
 	const containerClass =
 		orientation === 'poster'
-			? `relative h-64 min-w-[150px] cursor-pointer transition-transform duration-200 ease-out md:h-80 md:min-w-[220px] ${
-					tallOnLarge ? 'md:h-[28rem] md:min-w-[220px]' : ''
-				} md:hover:scale-105 rounded-xl overflow-hidden`
+			? fluid
+				? 'relative w-full aspect-[2/3] cursor-pointer transition-transform duration-200 ease-out hover:scale-105 rounded-xl overflow-hidden'
+				: `relative h-64 min-w-[150px] cursor-pointer transition-transform duration-200 ease-out md:h-80 md:min-w-[220px] ${
+						tallOnLarge ? 'md:h-[28rem] md:min-w-[220px]' : ''
+					} md:hover:scale-105 rounded-xl overflow-hidden`
 			: 'relative h-28 min-w-[180px] cursor-pointer transition-transform duration-200 ease-out md:h-36 md:min-w-[260px] md:hover:scale-105 rounded-lg overflow-hidden';
 	return (
-		<div
+		<button
+			type='button'
 			className={containerClass}
+			aria-haspopup='dialog'
+			aria-label={'Open details for ' + (movie.title || movie.name || 'this title')}
 			onClick={() => {
 				if (process.env.NODE_ENV !== 'production') {
 					console.log('Thumbnail clicked', {
@@ -82,7 +90,7 @@ function Thumbnail({
 					<span className='text-sm text-gray-300'>Image unavailable</span>
 				</div>
 			)}
-		</div>
+		</button>
 	);
 }
 

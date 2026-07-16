@@ -1,7 +1,6 @@
 import { getApp } from '@firebase/app';
 // Note: createCheckoutSession and getProducts are used dynamically in the application
-import { getStripePayments } from '@invertase/firestore-stripe-payments';
-import { loadStripe } from '@stripe/stripe-js';
+import { createCheckoutSession, getStripePayments } from '@invertase/firestore-stripe-payments';
 
 // 初始化 Firebase app
 const app = getApp();
@@ -12,38 +11,16 @@ const payments = getStripePayments(app, {
 	customersCollection: 'customers',
 });
 
-const stripePromise = loadStripe(
-	process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
-);
+const loadCheckout = async (priceId: string) => {
+	const origin = window.location.origin;
+	const session = await createCheckoutSession(payments, {
+		price: priceId,
+		mode: 'subscription',
+		success_url: origin + '/checkout-status?state=success',
+		cancel_url: origin + '/checkout-status?state=cancelled',
+	});
 
-const loadCheckout = async (priceId: string, userId: string) => {
-	try {
-		const stripe = await stripePromise;
-		if (!stripe) throw new Error('Stripe not loaded');
-
-		// 創建 checkout session
-		const response = await fetch('/api/create-checkout-session', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({ priceId, userId }),
-		});
-
-		const session = await response.json();
-
-		// 重定向到 Stripe Checkout
-		const result = await stripe.redirectToCheckout({
-			sessionId: session.id,
-		});
-
-		if (result.error) {
-			throw new Error(result.error.message);
-		}
-	} catch (error) {
-		console.error('支付錯誤:', error);
-		window.location.assign('/error');
-	}
+	window.location.assign(session.url);
 };
 
 export { loadCheckout };

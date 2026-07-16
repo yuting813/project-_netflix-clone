@@ -44,7 +44,7 @@ describe('useSubscription', () => {
 			current_period_start: 1234560000,
 		};
 
-		(onSnapshot as jest.Mock).mockImplementation((query, onNext, onError) => {
+		(onSnapshot as jest.Mock).mockImplementation((query, onNext, _onError) => {
 			onNext({
 				empty: false,
 				docs: [
@@ -66,7 +66,7 @@ describe('useSubscription', () => {
 	});
 
 	it('should handle no subscription found', async () => {
-		(onSnapshot as jest.Mock).mockImplementation((query, onNext, onError) => {
+		(onSnapshot as jest.Mock).mockImplementation((query, onNext, _onError) => {
 			onNext({
 				empty: true,
 				docs: [],
@@ -83,7 +83,7 @@ describe('useSubscription', () => {
 	});
 
 	it('should handle error state', async () => {
-		(onSnapshot as jest.Mock).mockImplementation((query, onNext, onError) => {
+		(onSnapshot as jest.Mock).mockImplementation((_query, _onNext, onError) => {
 			onError(new Error('Permission denied'));
 			return jest.fn();
 		});

@@ -1,7 +1,9 @@
 import { CheckIcon } from '@heroicons/react/outline';
 import { Product } from '@invertase/firestore-stripe-payments';
 import Head from 'next/head';
+import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import React, { useState } from 'react';
 import useAuth from '@/hooks/useAuth';
 import { loadCheckout } from '../lib/stripe';
@@ -14,11 +16,12 @@ interface Props {
 
 const Plans = ({ products }: Props) => {
 	const { logout, user } = useAuth();
+	const router = useRouter();
 	const [selectedPlan, setSelectedPlan] = useState<Product | null>(products[2]);
 
 	const [isBillingLoading, setBillingLoading] = useState(false);
 
-	const subscribeToPlan = () => {
+	const subscribeToPlan = async () => {
 		if (!user) return;
 
 		const priceId = selectedPlan?.price?.[0]?.id;
@@ -27,13 +30,13 @@ const Plans = ({ products }: Props) => {
 			return;
 		}
 
-		console.log('Attempting checkout with price ID:', priceId);
+		setBillingLoading(true);
 		try {
-			loadCheckout(priceId, user.uid);
-			setBillingLoading(true);
-			console.log('開始訂閱流程');
+			await loadCheckout(priceId);
 		} catch (error) {
 			console.error('訂閱過程發生錯誤:', error);
+			await router.push('/checkout-status?state=error');
+		} finally {
 			setBillingLoading(false);
 		}
 	};
@@ -48,9 +51,11 @@ const Plans = ({ products }: Props) => {
 			<header className='border-b border-white/10 bg-[#141414]'>
 				<Link href='/'>
 					<div>
-						<img
+						<Image
 							src='/logo.svg'
-							alt='logo'
+							alt='Stream home'
+							width={40}
+							height={40}
 							className='absolute left-4 top-4 h-[40px] w-[40px] cursor-pointer object-contain md:left-10 md:top-6'
 						/>
 					</div>

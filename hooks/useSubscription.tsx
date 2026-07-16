@@ -45,7 +45,7 @@ function useSubscription(user: User | null): SubscriptionResult {
 					setSubscription(currentSub);
 					setLoading(false);
 				},
-				(error) => {
+				(_error) => {
 					setError('訂閱數據獲取失敗');
 					setLoading(false);
 				},

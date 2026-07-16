@@ -1,6 +1,6 @@
 [English](README.md) | [繁體中文](README.zh-TW.md)
 
-# TMDB Streaming Architecture — 穩健生產級前端參考實作
+# TMDB Streaming Architecture — 生產導向的前端架構參考實作
 
 本專案為串流媒體前端架構的**技術參考實作**，專注於解決**多重非同步資料流的狀態依賴**與**邊界極端情境（Edge Cases）**。本架構展示了如何在 **Firebase Auth（身份認證）**、**Stripe（金流訂閱）** 與 **TMDB（媒體資料）** 之間，建立一個**可預測、高容錯且具備防禦性設計（Defensive Design）**的狀態管理系統。
 
@@ -8,7 +8,7 @@
 - **測試憑證**：Email `demo@tinahu.dev` / Password `Demo1234!`（帳號已預先開通測試訂閱）
 
 [![Continuous Integration](https://github.com/yuting813/TMDB-Streaming-Architecture/actions/workflows/ci.yml/badge.svg)](https://github.com/yuting813/TMDB-Streaming-Architecture/actions)
-![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-15.5-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%7C%20Auth-orange?logo=firebase)
 ![Recoil](https://img.shields.io/badge/State-Recoil-purple)
@@ -45,11 +45,11 @@ if (!subscription) return <Plans products={products} />;
 return <MainContent />;
 ```
 
-優勢在於：未來若需新增邊界情境，只需插入一層 `if` 即可，不會引發回歸錯誤（Regression Bug）。
+優勢在於：每一層 guard 只處理一個邊界，後續新增情境時較容易維持既有分支的行為。
 
 ---
 
-### 2. `initialLoading` — FOUC 與畫面閃動的根本解法
+### 2. initialLoading — 避免初始驗證畫面閃動
 
 Firebase 驗證為非同步回調。在 SDK 確認使用者狀態前，`user` 會暫時呈現 `null`。若此時觸發路由守衛，已登入的用戶會經歷「未登入畫面 → 首頁」的嚴重閃動（Flash of Unauthenticated Content, FOUC）。
 
@@ -57,13 +57,13 @@ Firebase 驗證為非同步回調。在 SDK 確認使用者狀態前，`user` �
 
 ```tsx
 <AuthContext.Provider value={memoedValue}>
-  {initialLoading ? (
-    <div className="flex h-screen w-screen items-center justify-center bg-black">
-      <Loader color="fill-red-600" />
-    </div>
-  ) : (
-    children
-  )}
+	{initialLoading ? (
+		<div className='flex h-screen w-screen items-center justify-center bg-black'>
+			<Loader color='fill-red-600' />
+		</div>
+	) : (
+		children
+	)}
 </AuthContext.Provider>
 ```
 
@@ -73,11 +73,11 @@ Firebase 驗證為非同步回調。在 SDK 確認使用者狀態前，`user` �
 
 ### 3. API Defense Layer（請求防禦層）：`tmdbFetch` 的三道防線
 
-嚴禁在元件內直接呼叫原生 `fetch()`。所有網路請求統一透過 `utils/request.ts` 轉發，並落實三大防護：
+TMDB 請求集中於 utils/request.ts，讓頁面與元件共用 timeout、錯誤處理與請求規則。
 
-1. **請求去重（Request Deduplication / In-flight Cache）**：`getStaticProps` 同時並行 8 個 TMDB 請求與 Firestore 產品查詢，不同路由頁面間可能含有重複 URL。透過模組級別的 `Map<string, Promise>` 快取，相同 URL 返回同一個 Promise 實體，阻斷重複流量。Promise reject 時自動清除 cache entry，允許重試。
+1. **請求去重（In-flight Cache）**：同一時間對相同 URL 的請求共用一個 Promise；Promise 完成後即清除 entry，讓後續 ISR 能重新取得資料。
 2. **Build 卡死防護（Timeout）**：內建 `AbortController` 賦予 8 秒 timeout，避免 TMDB 網路不穩導致 Next.js build 無限掛起。
-3. **安全的中斷聚合（`mergeAbortSignals`）**：完美收斂「網路 Timeout 事件」與「Component 卸載事件」。任何一方發送 Abort 皆可乾淨砍斷底層 `fetch`；abort 後同步執行 `removeEventListener` 清除兩個原始 signal 的監聽器，根除 React Memory Leak 與懸空非同步回調。（手刻實作，作為 Safari 的 polyfill——較舊的 Safari 版本不支援 `AbortSignal.any()`。）
+3. **中斷訊號整合**：合併 timeout 與呼叫端 AbortSignal，並在 abort 或請求完成後移除監聽器，避免不必要地保留 callback。
 
 ---
 
@@ -117,11 +117,11 @@ useEffect(() => {
 | 電影分類資料 | Next.js ISR (`getStaticProps` + `revalidate: 3600`)    | Build Time + 每小時背景增量       | TMDB API                      |
 | 用戶個人資料 | Firestore `onSnapshot` (`useList` / `useSubscription`) | 任何 DB 變化即時推送 (Push-based) | Firestore                     |
 
-**設計決策**：針對使用者的「我的片單」，捨棄將狀態儲存於 Redux/Recoil 後再非同步推上後端的傳統作法，改將 Firestore 直接當作 SSOT。元件僅負責觸發寫入，並依賴 `onSnapshot` 被動接收變化，徹底杜絕了 UI 先行導致的狀態不一致風險。
+**設計決策**：Firestore 是「我的片單」在伺服端的資料來源。元件觸發寫入，並透過 onSnapshot 接收已提交的變化，降低 UI 與後端短暫不一致的風險。
 
 **訂閱查詢條件**：`useSubscription` 以 `where('status', 'in', ['active', 'trialing'])` 查詢，一個守衛同時涵蓋標準有效訂閱與試用期（Trial Period）用戶。
 
-**錯誤 Fallback**：`getStaticProps` 的 catch 區塊在 TMDB 請求失敗時會回傳空陣列，並縮短 `revalidate` 至 60 秒，確保 build 失敗後盡快觸發重建重試。
+**錯誤 Fallback**：TMDB 請求失敗時，getStaticProps 回傳空陣列並使用 revalidate: 60，讓頁面仍可完成建置，並較早進入下一次重新產生。
 
 ---
 
@@ -131,7 +131,7 @@ useEffect(() => {
 
 - **UI 狀態 (Recoil Atom)**：Banner、Thumbnail 與 Modal 若使用 Context 會引發大範圍的不必要重渲染。本系統使用 Recoil atom 作為輕量的發布/訂閱（Publish/Subscribe）事件匯流排，讓元件完全解耦——Thumbnail 點擊後僅需 `setCurrentMovie(movie)`，無需任何 Prop Drilling。
 
-  **寫入端隔離**：`Thumbnail` 採用 `useSetRecoilState`（純寫入 Setter）而非 `useRecoilState`。因為 Thumbnail 只需要發送狀態、從不讀取，使用 `useSetRecoilState` 可確保所有縮圖元件都不會被登記為 Recoil atom 的訂閱者，徹底消除「點擊任意縮圖導致畫面上所有縮圖一同重渲染」的 O(N) 連鎖渲染問題。`Home` 頁面本身也不持有任何 `modalState` 的參照，確保頁面層級元件完全脫離 UI 互動狀態的訂閱鏈。
+  **寫入端隔離**：Thumbnail 只寫入 modal state，因此使用 useSetRecoilState，不訂閱 atom 值的變化，避免 modal 狀態更新帶動整批縮圖重新渲染。
 
 ---
 
@@ -140,7 +140,9 @@ useEffect(() => {
 ```mermaid
 graph TD
     subgraph "Build Time — ISR"
-        A[getStaticProps] -->|Promise.all x8 + Firestore products| B["tmdbFetch&lt;T&gt;()"]
+        A[getStaticProps] -->|Promise.all x8| B["tmdbFetch&lt;T&gt;()"]
+        A --> P[Firestore products]
+        P --> C
         B -->|revalidate 3600| C[Static HTML + Props]
     end
 
@@ -171,12 +173,51 @@ graph TD
 
 ## 邊界情境防護與系統穩定性
 
-- **圖片載入狀態管理**：每個圖片元件皆維護三個階段——載入中（以漸層 `animate-pulse` Skeleton 防止版面移位 CLS）、成功（`opacity-100` 淡入 transition 避免閃爍）、失敗（顯示本地 `/fallback-image.webp` 以防破圖）。同時利用 `onError` 觸發 `setIsLoaded(true)`，確保 fallback 圖片出現時能即時卸載 Skeleton。另外在 fallback 之上疊加 `"Image unavailable"` 錯誤提示覆蓋層，明確傳達失敗狀態。此機制已實作於 `Thumbnail.tsx` 與 `Modal.tsx`。
-- **防篡改的路由白名單**：透過 `Object.freeze(['/login', '/signup', '/reset', '/pricing'])` 凍結常數，確保 Auth 路由守衛的判斷基準不會被意外修改。作為一種工程紀律，此舉能在開發階段提早攔截誤用（觸發 TypeError），落實「防呆大於防駭」的防禦性精神。
-- **Modal 無障礙 Focus Trap**：Modal 開啟時，將 `document.activeElement` 存入 `triggerRef`。透過 `keydown` 監聽器強制 Tab 鍵在 Modal 內所有可聚焦元素間循環，並支援 ESC 關閉、Space 切換播放。Modal 關閉時，透過 `triggerRef.current?.focus()` 同步將焦點還原至原始觸發元素，符合 WCAG 可及性標準。
-- **Jest 單元測試**：聚焦於 `useSubscription`，使用 Mock Firestore 測試 6 種邊界狀態切換：`null user`、`empty list`、`onSnapshot error`、`loading`、`subscription active`、`subscription inactive`，嚴格驗證非同步情境下的程式碼強韌度。
+- **圖片載入狀態管理**：Thumbnail 與 Modal 在遠端圖片載入時顯示 skeleton 或 fallback artwork；Thumbnail 在請求失敗後亦會顯示 Image unavailable 提示。
+- **明確的公開路由白名單**：Auth routing 集中列出 login、signup 與 checkout status，並凍結陣列，降低公開路由被意外修改的可能。
+- **Modal 鍵盤與焦點行為**：影片縮圖使用具 dialog 標示的語意化 button；MUI Modal 提供焦點限制、ESC 關閉與焦點還原，dialog 亦具有可存取標題。
+- **Jest 單元測試**：useSubscription 的 6 個測試涵蓋初始 loading、null user、active subscription、empty result、snapshot error 與 setup failure。
 
 ---
+
+## 本機執行
+
+### 前置需求
+
+- Node.js 18.18 以上
+- npm
+- TMDB API key
+- 已啟用 Authentication 與 Firestore 的 Firebase 專案
+- 已在同一 Firebase 專案設定 Stripe Payments Firebase Extension
+
+### 安裝與啟動
+
+```powershell
+npm ci
+Copy-Item .env.example .env.local
+npm run dev
+```
+
+填入 .env.local 的 Firebase 與 TMDB 設定後，開啟 http://localhost:3000。
+
+### Firebase 與 Stripe 設定
+
+1. 在 Firebase 啟用 Email/Password 登入。
+2. 部署 firestore.rules 與 firebase.json 宣告的 indexes。
+3. 安裝並設定 firebase.json 宣告的 Stripe Payments Firebase Extension。
+4. 透過 Extension 同步有效的 products 與 prices。
+5. Stripe test-mode secret 與 webhook 設定放在 Firebase Extension，不放入瀏覽器環境變數。
+
+Checkout 會以目前登入的 Firebase 使用者建立 customers/{uid}/checkout_sessions。Extension 負責建立 Stripe Checkout Session，並將訂閱更新寫回 Firestore；前端只讀取 subscription records。
+
+### 品質檢查
+
+```powershell
+npm run lint
+npm run test -- --ci
+npx tsc --noEmit
+npm run build
+```
 
 ## 專案結構
 
@@ -216,7 +257,7 @@ products/
 
 ### 2. 安全規則 (Security Rules) 設計
 
-本專案的 `firestore.rules` 依功能需求區分讀寫權限：
+firestore.rules 依功能需求區分讀寫權限：
 
 - **用戶資料隔離**：`customers/{uid}` 及其子集合限制為 `request.auth.uid == uid`，僅允許持有對應憑證的登入用戶本人進行存取。
 - **敏感資料唯讀**：用戶的訂閱記錄（`subscriptions`）與付款記錄（`payments`）在安全規則中僅開放 `read` 權限。用戶端無法直接變更訂閱狀態，狀態更新需經由 Stripe Webhook (Stripe Firebase Extension) 於後端處理，防範前端資料篡改。
@@ -229,7 +270,7 @@ products/
 
 結合過去在風險管理中對「極端情境預判」的敏感度，我將這份思維帶入軟體開發，專注於**防禦性前端工程**與程式庫韌性。
 
-本專案展示了如何將此原則應用於複雜的非同步系統：不論是串流媒體的三態狀態機、與舊版 Safari 相容的 AbortSignal 集中清理、30 分鐘 Session 自動過期防護，還是多層路由防護鏈，皆力求在底層 API 或網路環境不穩定時，確保使用者體驗與系統狀態的完美一致。
+本專案將此思維應用於非同步驗證、訂閱狀態、TMDB 請求、Modal 互動與 UI fallback，目標是明確處理失敗狀態，並在外部服務延遲或不可用時維持可預測的使用者體驗。
 
 - **Website**: [tinahu.dev](https://www.tinahu.dev/)
 - **GitHub**: [yuting813](https://github.com/yuting813)

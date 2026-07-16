@@ -1,8 +1,6 @@
 import { Product } from '@invertase/firestore-stripe-payments';
-import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { useEffect } from 'react';
 import Banner from '@/components/Banner';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
@@ -40,8 +38,6 @@ const Home = ({
 	trendingNow,
 	products,
 }: Props) => {
-	const router = useRouter();
-	const { session_id } = router.query;
 	const { loading: authLoading, user } = useAuth();
 	const {
 		subscription,
@@ -49,31 +45,6 @@ const Home = ({
 		error: subscriptionError,
 	} = useSubscription(user);
 	const list = useList(user?.uid);
-
-	useEffect(() => {
-		if (session_id && user) {
-			// 支付成功後更新訂閱狀態
-			const updateSubscription = async () => {
-				try {
-					const subscriptionRef = doc(db, 'customers', user.uid, 'subscriptions', 'active');
-					await setDoc(
-						subscriptionRef,
-						{
-							status: 'active',
-							current_period_start: Date.now(),
-							current_period_end: Date.now() + 30 * 24 * 60 * 60 * 1000,
-							userId: user.uid,
-						},
-						{ merge: true },
-					);
-					console.log('訂閱狀態更新成功');
-				} catch (error) {
-					console.error('更新訂閱狀態失敗:', error);
-				}
-			};
-			updateSubscription();
-		}
-	}, [session_id, user]);
 
 	if (authLoading || subscriptionLoading) {
 		return (

@@ -5,7 +5,7 @@ const ENV_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY?.trim() || undefined;
 const BASE_URL = 'https://api.themoviedb.org/3';
 
 // Global fetch cache to avoid duplicate TMDB requests
-const fetchCache = new Map<string, Promise<any>>();
+const fetchCache = new Map<string, Promise<unknown>>();
 
 export type TmdbFetchOptions = {
 	params?: Record<string, string | number | boolean | undefined>;
@@ -18,7 +18,7 @@ export type TmdbResponse<T> = {
 	results?: T[];
 	total_pages?: number;
 	total_results?: number;
-} & Record<string, any>;
+} & Record<string, unknown>;
 
 //-------------------------------------------------------------
 // 2. Pure helpers to build a clean TMDB URL
@@ -40,7 +40,7 @@ function mergeParams(url: URL, params?: Record<string, string | number | boolean
 	});
 }
 
-function ensureApiKey(url: URL, params?: Record<string, any>) {
+function ensureApiKey(url: URL, params?: Record<string, string | number | boolean | undefined>) {
 	const hasKeyInParams = params && Object.prototype.hasOwnProperty.call(params, 'api_key');
 	const hasKeyInUrl = url.searchParams.has('api_key');
 
@@ -75,14 +75,18 @@ function buildUrl(
 //-------------------------------------------------------------
 // 4. Main TMDB Fetch wrapper with cache + timeout + typing
 //-------------------------------------------------------------
-export async function tmdbFetch<T = any>(path: string, options: TmdbFetchOptions = {}): Promise<T> {
+export async function tmdbFetch<T = unknown>(
+	path: string,
+	options: TmdbFetchOptions = {},
+): Promise<T> {
 	const { params, timeout = 8000, signal: userSignal } = options;
 
 	const url = buildUrl(path, params);
 
 	// Check fetch cache—return existing promise if present
-	if (fetchCache.has(url)) {
-		return fetchCache.get(url)!;
+	const cachedRequest = fetchCache.get(url);
+	if (cachedRequest) {
+		return cachedRequest as Promise<T>;
 	}
 
 	// Create the actual fetch promise
@@ -91,9 +95,8 @@ export async function tmdbFetch<T = any>(path: string, options: TmdbFetchOptions
 		const timeoutId = setTimeout(() => controller.abort(), timeout);
 
 		// Combine user-provided signal with timeout signal
-		const finalSignal = userSignal
-			? mergeAbortSignals(userSignal, controller.signal)
-			: controller.signal;
+		const mergedSignals = userSignal ? mergeAbortSignals(userSignal, controller.signal) : undefined;
+		const finalSignal = mergedSignals?.signal ?? controller.signal;
 
 		try {
 			const res = await fetch(url, { signal: finalSignal });
@@ -102,20 +105,23 @@ export async function tmdbFetch<T = any>(path: string, options: TmdbFetchOptions
 			if (!res.ok) {
 				const text = await res.text().catch(() => '');
 				const msg = `TMDB fetch error ${res.status} ${res.statusText}${text ? `: ${text}` : ''}`;
-				const err: any = new Error(msg);
+				const err = new Error(msg) as Error & { status: number };
 				err.status = res.status;
 				throw err;
 			}
 
 			return (await res.json()) as T;
-		} catch (err: any) {
-			if (err.name === 'AbortError') {
-				const e: any = new Error('Request aborted (timeout or signal)');
-				e.code = 'ABORTED';
-				throw e;
+		} catch (error: unknown) {
+			if (error instanceof Error && error.name === 'AbortError') {
+				const abortedError = new Error('Request aborted (timeout or signal)') as Error & {
+					code: string;
+				};
+				abortedError.code = 'ABORTED';
+				throw abortedError;
 			}
-			throw err;
+			throw error;
 		} finally {
+			mergedSignals?.cleanup();
 			clearTimeout(timeoutId);
 		}
 	})();
@@ -123,8 +129,12 @@ export async function tmdbFetch<T = any>(path: string, options: TmdbFetchOptions
 	// Save promise in cache
 	fetchCache.set(url, fetchPromise);
 
-	// If the promise rejects, remove it from cache to avoid stuck cache
-	fetchPromise.catch(() => fetchCache.delete(url));
+	// This Map deduplicates only concurrent requests. Clear settled Promises so
+	// a later ISR execution can fetch fresh TMDB data.
+	const clearCacheEntry = () => {
+		if (fetchCache.get(url) === fetchPromise) fetchCache.delete(url);
+	};
+	void fetchPromise.then(clearCacheEntry, clearCacheEntry);
 
 	return fetchPromise;
 }
@@ -132,24 +142,30 @@ export async function tmdbFetch<T = any>(path: string, options: TmdbFetchOptions
 //-------------------------------------------------------------
 // Helper: merge two AbortSignals (timeout + user signal)
 //-------------------------------------------------------------
-function mergeAbortSignals(signalA: AbortSignal, signalB: AbortSignal): AbortSignal {
+type MergedAbortSignals = {
+	signal: AbortSignal;
+	cleanup: () => void;
+};
+
+function mergeAbortSignals(signalA: AbortSignal, signalB: AbortSignal): MergedAbortSignals {
 	const controller = new AbortController();
-	const onAbort = () => controller.abort();
+	const cleanup = () => {
+		signalA.removeEventListener('abort', onAbort);
+		signalB.removeEventListener('abort', onAbort);
+	};
+	const onAbort = () => {
+		controller.abort();
+		cleanup();
+	};
 
-	signalA.addEventListener('abort', onAbort);
-	signalB.addEventListener('abort', onAbort);
+	if (signalA.aborted || signalB.aborted) {
+		controller.abort();
+	} else {
+		signalA.addEventListener('abort', onAbort);
+		signalB.addEventListener('abort', onAbort);
+	}
 
-	// Clean up when merged signal aborts
-	controller.signal.addEventListener(
-		'abort',
-		() => {
-			signalA.removeEventListener('abort', onAbort);
-			signalB.removeEventListener('abort', onAbort);
-		},
-		{ once: true },
-	);
-
-	return controller.signal;
+	return { signal: controller.signal, cleanup };
 }
 
 //-------------------------------------------------------------
