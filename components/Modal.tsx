@@ -1,7 +1,7 @@
 import { CheckIcon, PlusIcon, ThumbUpIcon, VolumeOffIcon, XIcon } from '@heroicons/react/outline';
 import { VolumeUpIcon } from '@heroicons/react/solid';
 import MuiModal from '@mui/material/Modal';
-import { deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import Image from 'next/image';
 import { useRecoilState } from 'recoil';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -131,7 +131,10 @@ function Modal() {
 				style: toastStyle,
 			});
 		} else {
-			await setDoc(doc(db, 'customers', user.uid, 'myList', movie.id.toString()), { ...movie });
+			await setDoc(doc(db, 'customers', user.uid, 'myList', movie.id.toString()), {
+				...movie,
+				addedAt: serverTimestamp(),
+			});
 			toast(`${movie?.title || movie?.original_name} has been added to My List`, {
 				duration: 8000,
 				style: toastStyle,
