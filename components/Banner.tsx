@@ -40,7 +40,7 @@ function Banner({ streamOriginals }: Props) {
 					sizes='100vw'
 					priority={true}
 					onError={() => setImageError(true)}
-					onLoadingComplete={() => setIsLoading(false)}
+					onLoad={() => setIsLoading(false)}
 				/>
 			</div>
 

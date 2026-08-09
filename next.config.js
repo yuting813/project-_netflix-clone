@@ -4,7 +4,16 @@ const withTM = require('next-transpile-modules')(['@invertase/firestore-stripe-p
 const nextConfig = {
 	reactStrictMode: true,
 	images: {
-		domains: ['image.tmdb.org', 'rb.gy'],
+		remotePatterns: [
+			{
+				protocol: 'https',
+				hostname: 'image.tmdb.org',
+			},
+			{
+				protocol: 'https',
+				hostname: 'rb.gy',
+			},
+		],
 	},
 };
 

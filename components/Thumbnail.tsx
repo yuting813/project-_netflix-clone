@@ -77,7 +77,7 @@ function Thumbnail({
 						? '(max-width: 768px) 40vw, (max-width: 1200px) 20vw, 12vw'
 						: '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
 				}
-				onLoadingComplete={() => setIsLoaded(true)}
+				onLoad={() => setIsLoaded(true)}
 				onError={() => {
 					console.error(`Failed to load image for movie: ${movie.title || movie.name}`, imagePath);
 					setImageError(true);
