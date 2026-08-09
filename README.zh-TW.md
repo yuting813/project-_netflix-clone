@@ -189,6 +189,7 @@ graph TD
 - TMDB API key
 - 已啟用 Authentication 與 Firestore 的 Firebase 專案
 - 已在同一 Firebase 專案設定 Stripe Payments Firebase Extension
+- 建議安裝：[React Developer Tools](https://react.dev/learn/react-developer-tools) 瀏覽器擴充套件（在開發環境下便於檢視 Recoil 狀態與進行效能分析）
 
 ### 安裝與啟動
 
