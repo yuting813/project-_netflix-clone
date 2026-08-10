@@ -262,7 +262,7 @@ function Modal() {
 								className={`object-cover transition-opacity duration-500 ${
 									posterLoaded ? 'opacity-100' : 'opacity-0'
 								}`}
-								onLoadingComplete={() => setPosterLoaded(true)}
+								onLoad={() => setPosterLoaded(true)}
 								onError={() => {
 									setPosterError(true);
 									setPosterLoaded(true);

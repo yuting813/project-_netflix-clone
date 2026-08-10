@@ -189,6 +189,7 @@ graph TD
 - A TMDB API key
 - A Firebase project with Authentication and Firestore enabled
 - The Stripe Payments Firebase Extension configured for the same Firebase project
+- Recommended: [React Developer Tools](https://react.dev/learn/react-developer-tools) browser extension (highly recommended for state inspection and performance profiling)
 
 ### Install and run
 
